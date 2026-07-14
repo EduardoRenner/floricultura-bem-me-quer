@@ -87,17 +87,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Arranjos florais artesanais, buquês de rosas e presentes em Maravilha, SC. Entrega local e atendimento acolhedor.",
       },
       { name: "author", content: "Floricultura Bem Me Quer" },
-      { property: "og:title", content: "Floricultura Bem Me Quer" },
+      { property: "og:title", content: "Floricultura Bem Me Quer — Flores em Maravilha, SC" },
       {
         property: "og:description",
-        content: "Flores que falam pelo coração. Arranjos, rosas e presentes em Maravilha, SC.",
+        content: "Arranjos florais artesanais, buquês de rosas e presentes em Maravilha, SC. Entrega local e atendimento acolhedor.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Floricultura Bem Me Quer — Flores em Maravilha, SC" },
+      { name: "twitter:description", content: "Arranjos florais artesanais, buquês de rosas e presentes em Maravilha, SC. Entrega local e atendimento acolhedor." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8daf4a6b-c834-4030-bdc0-f76b7e020afe/id-preview-660d0bfe--ef7dbc67-a5e9-421c-bd27-4adfa1c5ae10.lovable.app-1784035499178.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8daf4a6b-c834-4030-bdc0-f76b7e020afe/id-preview-660d0bfe--ef7dbc67-a5e9-421c-bd27-4adfa1c5ae10.lovable.app-1784035499178.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
