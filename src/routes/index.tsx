@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ProductCard, type Product } from "@/components/site/ProductCard";
+import { SurpriseMeSection, SurpriseMeButton } from "@/components/site/SurpriseMe";
+import { OccasionsHomeSection } from "@/components/site/OccasionsGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
