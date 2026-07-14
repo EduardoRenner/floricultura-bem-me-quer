@@ -216,44 +216,9 @@ function DashboardTab({ password }: { password: string }) {
     queryKey: ["admin-stats"],
     queryFn: () => stats({ data: { password } }),
   });
-  return (
-    <div>
-      <h1 className="font-display text-3xl">Dashboard</h1>
-      <p className="text-sm text-muted-foreground">Visão geral da loja</p>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <StatCard title="Pedidos hoje" value={data?.todayCount ?? "…"} icon={ShoppingBag} />
-        <StatCard title="Pedidos pendentes" value={data?.pendingCount ?? "…"} icon={Package} />
-        <StatCard
-          title="Faturamento no mês"
-          value={data ? formatBRL(data.monthRevenue) : "…"}
-          icon={BarChart3}
-        />
-      </div>
-    </div>
-  );
+  return <ReportsDashboard live={data} />;
 }
 
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-}: {
-  title: string;
-  value: number | string;
-  icon: typeof LayoutDashboard;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{title}</span>
-        <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <div className="mt-3 font-display text-3xl">{value}</div>
-    </div>
-  );
-}
 
 type Order = {
   id: string;
