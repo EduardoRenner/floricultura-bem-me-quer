@@ -112,7 +112,10 @@ export const adminListSettings = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
-    const { data: rows, error } = await admin.from("settings").select("*");
+    const { data: rows, error } = await admin
+      .from("settings")
+      .select("*")
+      .neq("key", "admin_password");
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
@@ -121,6 +124,13 @@ export const adminUpdateSetting = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string; key: string; value: unknown }) => data)
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
+    if (data.key === "admin_password") {
+      const newPw = typeof data.value === "string" ? data.value : "";
+      if (newPw.length < 8) throw new Error("Senha muito curta (mínimo 8 caracteres)");
+      const { error } = await admin.rpc("set_admin_password", { _new_password: newPw });
+      if (error) throw new Error(error.message);
+      return { ok: true as const };
+    }
     const { error } = await admin
       .from("settings")
       .update({ value: data.value as never })
