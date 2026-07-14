@@ -16,8 +16,8 @@ export type Product = {
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   return (
-    <article className="card-hover group overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm hover:-translate-y-1 hover:shadow-[0_20px_45px_-20px_oklch(0.48_0.17_358_/_0.35)]">
-      <div className="aspect-[4/5] overflow-hidden bg-muted">
+    <article className="card-hover group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
+      <div className="aspect-[4/5] overflow-hidden" style={{ background: "#172217" }}>
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
         )}
         <div className="flex items-center justify-between pt-2">
-          <span className="font-display text-xl text-primary">{formatBRL(Number(product.price))}</span>
+          <span className="font-display text-xl text-accent">{formatBRL(Number(product.price))}</span>
           <Button
             size="sm"
             onClick={() => {

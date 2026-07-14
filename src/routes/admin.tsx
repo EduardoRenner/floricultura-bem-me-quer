@@ -84,12 +84,15 @@ function AdminPage() {
     <div className="min-h-screen bg-muted/30">
       <div className="mx-auto flex max-w-7xl">
         <aside className="hidden w-60 shrink-0 border-r border-border bg-card p-4 md:block">
-          <div className="mb-6 flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground font-display">
-              B
+          <div className="mb-6 flex items-center gap-3">
+            <span
+              className="grid h-10 w-10 place-items-center rounded-full font-display text-[13px] font-bold text-accent"
+              style={{ background: "#1A2B1A", border: "2px solid #C4A84F", letterSpacing: "0.05em" }}
+            >
+              BMQ
             </span>
             <div>
-              <div className="font-display">Bem Me Quer</div>
+              <div className="font-display text-accent">Bem Me Quer</div>
               <div className="text-xs text-muted-foreground">Painel admin</div>
             </div>
           </div>
@@ -180,8 +183,11 @@ function LoginCard({ onLogin }: { onLogin: (p: string) => void }) {
         className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-8 shadow-lg"
       >
         <div className="text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground font-display text-xl">
-            B
+          <span
+            className="mx-auto grid h-12 w-12 place-items-center rounded-full font-display text-[14px] font-bold text-accent"
+            style={{ background: "#1A2B1A", border: "2px solid #C4A84F", letterSpacing: "0.05em" }}
+          >
+            BMQ
           </span>
           <h1 className="mt-3 font-display text-2xl">Painel Admin</h1>
           <p className="text-sm text-muted-foreground">Floricultura Bem Me Quer</p>

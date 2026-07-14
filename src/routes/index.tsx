@@ -74,50 +74,38 @@ function Home() {
           style={{ background: "var(--gradient-hero)" }}
           aria-hidden
         />
-        <div className="floral-pattern absolute inset-0 opacity-70" aria-hidden />
-        <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-24 text-center text-primary-foreground md:py-32">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-xs uppercase tracking-widest backdrop-blur-sm">
+        <div className="floral-pattern absolute inset-0" aria-hidden />
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-24 text-center md:py-32">
+          <span className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-xs uppercase tracking-widest text-accent backdrop-blur-sm">
             <Flower2 className="h-3.5 w-3.5" /> Maravilha · Santa Catarina
           </span>
-          <h1 className="max-w-3xl font-display text-4xl leading-tight md:text-6xl">
+          <h1 className="max-w-3xl font-display text-4xl leading-tight text-accent md:text-6xl">
             Flores que falam pelo coração
           </h1>
-          <p className="max-w-2xl text-base text-white/90 md:text-lg">
+          <p className="max-w-2xl text-base text-foreground/90 md:text-lg">
             Arranjos artesanais, rosas e presentes florais para cada ocasião especial.
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-3">
             <Button
               size="lg"
-              className="bg-white text-primary hover:bg-white/90"
               onClick={() => document.getElementById("produtos")?.scrollIntoView({ behavior: "smooth" })}
             >
               Ver Produtos
             </Button>
             <a href={WHATSAPP_URL} target="_blank" rel="noreferrer">
-              <Button size="lg" variant="outline" className="border-white/70 bg-transparent text-white hover:bg-white/15">
+              <Button size="lg" variant="outline" className="border-accent bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
                 <Phone className="mr-2 h-4 w-4" /> Falar pelo WhatsApp
               </Button>
             </a>
           </div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-white/90">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-foreground/80">
             <span className="inline-flex items-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" /> 4.5/5 estrelas
+              <Star className="h-4 w-4 fill-accent text-accent" /> 4.5/5 estrelas
             </span>
             <span>· 📦 Entrega disponível</span>
             <span>· ♿ Acessível</span>
           </div>
         </div>
-        {/* petal curve */}
-        <svg
-          className="absolute inset-x-0 bottom-0 h-16 w-full text-background"
-          viewBox="0 0 1440 80"
-          preserveAspectRatio="none"
-        >
-          <path
-            fill="currentColor"
-            d="M0,32 C240,96 480,0 720,32 C960,64 1200,16 1440,48 L1440,80 L0,80 Z"
-          />
-        </svg>
       </section>
 
       {/* SOBRE */}
@@ -169,8 +157,8 @@ function Home() {
                   className={
                     "rounded-full border px-4 py-1.5 text-sm transition " +
                     (category === c
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground/80 hover:border-primary/50 hover:text-primary")
+                      ? "border-accent bg-primary text-primary-foreground"
+                      : "border-border bg-transparent text-muted-foreground hover:border-accent hover:text-accent")
                   }
                 >
                   {c}
@@ -241,9 +229,11 @@ function Home() {
             <h2 className="mt-2 font-display text-3xl md:text-4xl">Estamos aqui para você</h2>
             <div className="mt-3">
               <span
-                className={
-                  "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium " +
-                  (openNow ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground")
+                className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium"
+                style={
+                  openNow
+                    ? { background: "rgba(46,125,50,0.2)", color: "#4ade80", border: "1px solid #2E7D32" }
+                    : { background: "rgba(127,29,29,0.25)", color: "#fca5a5", border: "1px solid #7f1d1d" }
                 }
               >
                 <Clock className="h-3.5 w-3.5" />

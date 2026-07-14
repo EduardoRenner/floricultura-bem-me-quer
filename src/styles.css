@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Lato", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Raleway", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Playfair Display", ui-serif, Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -36,56 +36,61 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
-  --color-blush: var(--blush);
-  --color-leaf: var(--leaf);
-  --color-rose-deep: var(--rose-deep);
+  --color-surface-deep: var(--surface-deep);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-leaf-deep: var(--leaf-deep);
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  /* Brand palette */
-  --background: oklch(0.985 0.008 350);       /* #FFF8F9 warm white */
-  --foreground: oklch(0.24 0.005 0);          /* #2C2C2C charcoal */
+  /* Dark botanical palette — forest green + gold */
+  --background: #1A2B1A;
+  --foreground: #F0EDD8;
 
-  --primary: oklch(0.48 0.17 358);            /* #C2185B deep rose */
-  --primary-foreground: oklch(0.99 0.005 350);
+  --surface-deep: #111A11;
+  --gold: #8B7A3A;
+  --gold-light: #C4A84F;
+  --leaf-deep: #172217;
 
-  --secondary: oklch(0.88 0.06 350);          /* #F8BBD9 blush */
-  --secondary-foreground: oklch(0.32 0.12 358);
+  --primary: #8B7A3A;
+  --primary-foreground: #1A2B1A;
 
-  --accent: oklch(0.56 0.15 145);             /* #388E3C leaf */
-  --accent-foreground: oklch(0.99 0.005 145);
+  --secondary: #243324;
+  --secondary-foreground: #F0EDD8;
 
-  --rose-deep: oklch(0.48 0.17 358);
-  --blush: oklch(0.88 0.06 350);
-  --leaf: oklch(0.56 0.15 145);
+  --accent: #C4A84F;
+  --accent-foreground: #1A2B1A;
 
-  --card: oklch(1 0 0);
-  --card-foreground: var(--foreground);
-  --popover: oklch(1 0 0);
-  --popover-foreground: var(--foreground);
-  --muted: oklch(0.96 0.01 350);
-  --muted-foreground: oklch(0.55 0.01 0);     /* #757575 */
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.99 0.005 0);
-  --border: oklch(0.9 0.02 350);
-  --input: oklch(0.92 0.02 350);
-  --ring: var(--primary);
+  --card: #1E2E1E;
+  --card-foreground: #F0EDD8;
+  --popover: #1E2E1E;
+  --popover-foreground: #F0EDD8;
 
-  --sidebar: oklch(0.985 0.008 350);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--muted);
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
+  --muted: #243324;
+  --muted-foreground: #9E9E7A;
 
-  --gradient-hero: linear-gradient(135deg, oklch(0.48 0.17 358 / 0.95), oklch(0.72 0.12 350 / 0.9));
-  --gradient-soft: linear-gradient(180deg, oklch(0.985 0.008 350), oklch(0.94 0.04 350));
-  --shadow-petal: 0 20px 45px -20px oklch(0.48 0.17 358 / 0.35);
-  --shadow-card: 0 10px 30px -12px oklch(0.48 0.17 358 / 0.18);
+  --destructive: #7f1d1d;
+  --destructive-foreground: #F0EDD8;
+
+  --border: #3A4A3A;
+  --input: #3A4A3A;
+  --ring: #C4A84F;
+
+  --sidebar: #111A11;
+  --sidebar-foreground: #F0EDD8;
+  --sidebar-primary: #C4A84F;
+  --sidebar-primary-foreground: #1A2B1A;
+  --sidebar-accent: #243324;
+  --sidebar-accent-foreground: #F0EDD8;
+  --sidebar-border: #3A4A3A;
+  --sidebar-ring: #C4A84F;
+
+  --gradient-hero: linear-gradient(135deg, #1A2B1A 0%, #243324 60%, #1A2B1A 100%);
+  --gradient-soft: linear-gradient(180deg, #1A2B1A, #243324);
+  --shadow-petal: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 @layer base {
@@ -106,14 +111,9 @@
 
 @utility floral-pattern {
   background-image:
-    radial-gradient(circle at 20% 30%, oklch(0.88 0.06 350 / 0.35) 0, transparent 25%),
-    radial-gradient(circle at 80% 70%, oklch(0.88 0.06 350 / 0.25) 0, transparent 30%),
-    radial-gradient(circle at 50% 90%, oklch(0.56 0.15 145 / 0.15) 0, transparent 30%);
-}
-
-@utility petal-divider {
-  --petal-color: var(--color-background);
-  position: relative;
+    radial-gradient(circle at 20% 30%, rgba(196, 168, 79, 0.10) 0, transparent 25%),
+    radial-gradient(circle at 80% 70%, rgba(196, 168, 79, 0.08) 0, transparent 30%),
+    radial-gradient(circle at 50% 90%, rgba(139, 122, 58, 0.10) 0, transparent 30%);
 }
 
 @utility card-hover {
