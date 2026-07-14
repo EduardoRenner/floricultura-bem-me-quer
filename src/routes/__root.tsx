@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "@/lib/cart";
 import { CartSheet } from "@/components/site/CartSheet";
 import { WhatsAppFab } from "@/components/site/WhatsAppFab";
+import { CinematicIntro } from "@/components/site/CinematicIntro";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {

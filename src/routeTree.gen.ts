@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OcasioesRouteImport } from './routes/ocasioes'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PedidoOrderNumberRouteImport } from './routes/pedido.$orderNumber'
 
+const OcasioesRoute = OcasioesRouteImport.update({
+  id: '/ocasioes',
+  path: '/ocasioes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/ocasioes': typeof OcasioesRoute
   '/pedido/$orderNumber': typeof PedidoOrderNumberRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/ocasioes': typeof OcasioesRoute
   '/pedido/$orderNumber': typeof PedidoOrderNumberRoute
 }
 export interface FileRoutesById {
@@ -52,25 +60,40 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/ocasioes': typeof OcasioesRoute
   '/pedido/$orderNumber': typeof PedidoOrderNumberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/checkout' | '/pedido/$orderNumber'
+  fullPaths: '/' | '/admin' | '/checkout' | '/ocasioes' | '/pedido/$orderNumber'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/checkout' | '/pedido/$orderNumber'
-  id: '__root__' | '/' | '/admin' | '/checkout' | '/pedido/$orderNumber'
+  to: '/' | '/admin' | '/checkout' | '/ocasioes' | '/pedido/$orderNumber'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/checkout'
+    | '/ocasioes'
+    | '/pedido/$orderNumber'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   CheckoutRoute: typeof CheckoutRoute
+  OcasioesRoute: typeof OcasioesRoute
   PedidoOrderNumberRoute: typeof PedidoOrderNumberRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/ocasioes': {
+      id: '/ocasioes'
+      path: '/ocasioes'
+      fullPath: '/ocasioes'
+      preLoaderRoute: typeof OcasioesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout': {
       id: '/checkout'
       path: '/checkout'
@@ -106,6 +129,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   CheckoutRoute: CheckoutRoute,
+  OcasioesRoute: OcasioesRoute,
   PedidoOrderNumberRoute: PedidoOrderNumberRoute,
 }
 export const routeTree = rootRouteImport
