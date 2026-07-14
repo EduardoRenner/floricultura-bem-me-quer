@@ -2,14 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 
 async function verifyAdmin(password: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("settings")
-    .select("value")
-    .eq("key", "admin_password")
-    .single();
-  if (error || !data) throw new Error("Configuração indisponível");
-  const stored = data.value as unknown as string;
-  if (password !== stored) throw new Error("Senha incorreta");
+  if (typeof password !== "string" || password.length === 0 || password.length > 200) {
+    throw new Error("Senha incorreta");
+  }
+  const { data, error } = await supabaseAdmin.rpc("verify_admin_password", {
+    _password: password,
+  });
+  if (error) throw new Error("Configuração indisponível");
+  if (!data) throw new Error("Senha incorreta");
   return supabaseAdmin;
 }
 
@@ -112,7 +112,10 @@ export const adminListSettings = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
-    const { data: rows, error } = await admin.from("settings").select("*");
+    const { data: rows, error } = await admin
+      .from("settings")
+      .select("*")
+      .neq("key", "admin_password");
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
@@ -121,6 +124,13 @@ export const adminUpdateSetting = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string; key: string; value: unknown }) => data)
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
+    if (data.key === "admin_password") {
+      const newPw = typeof data.value === "string" ? data.value : "";
+      if (newPw.length < 8) throw new Error("Senha muito curta (mínimo 8 caracteres)");
+      const { error } = await admin.rpc("set_admin_password", { _new_password: newPw });
+      if (error) throw new Error(error.message);
+      return { ok: true as const };
+    }
     const { error } = await admin
       .from("settings")
       .update({ value: data.value as never })
