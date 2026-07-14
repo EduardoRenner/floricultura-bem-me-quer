@@ -350,8 +350,8 @@ function OrdersTab({ password }: { password: string }) {
                           <p className="text-sm">Pagamento: {o.payment_method}</p>
                           {o.delivery_address && (
                             <p className="text-sm text-muted-foreground">
-                              {o.delivery_address.rua}, {o.delivery_address.numero} -{" "}
-                              {o.delivery_address.bairro}
+                              {String(o.delivery_address.rua ?? "")}, {String(o.delivery_address.numero ?? "")} -{" "}
+                              {String(o.delivery_address.bairro ?? "")}
                             </p>
                           )}
                           <div className="mt-3">
