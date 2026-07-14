@@ -279,7 +279,7 @@ function CheckoutPage() {
             </section>
 
             <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-              {submitting ? "Enviando…" : "Finalizar Pedido"}
+              {submitting ? "Preparando pedido…" : "Finalizar pelo WhatsApp 💬"}
             </Button>
           </form>
 
@@ -312,7 +312,7 @@ function CheckoutPage() {
             </div>
             <div className="flex items-center gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
               <CheckCircle2 className="h-4 w-4" />
-              Ao finalizar, entraremos em contato para confirmar o pedido.
+              Seu pedido será enviado diretamente pelo WhatsApp para confirmarmos os detalhes.
             </div>
           </aside>
         </div>
