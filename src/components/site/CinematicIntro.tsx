@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const BRAND = "Floricultura Demo";
+const BRAND = "Floricultura Bem Me Quer";
 const PETAL_COLORS = ["#C4A84F", "#8B7A3A", "#F0EDD8"];
 
 export function CinematicIntro() {
