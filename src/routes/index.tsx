@@ -229,9 +229,11 @@ function Home() {
             <h2 className="mt-2 font-display text-3xl md:text-4xl">Estamos aqui para você</h2>
             <div className="mt-3">
               <span
-                className={
-                  "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium " +
-                  (openNow ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground")
+                className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium"
+                style={
+                  openNow
+                    ? { background: "rgba(46,125,50,0.2)", color: "#4ade80", border: "1px solid #2E7D32" }
+                    : { background: "rgba(127,29,29,0.25)", color: "#fca5a5", border: "1px solid #7f1d1d" }
                 }
               >
                 <Clock className="h-3.5 w-3.5" />
