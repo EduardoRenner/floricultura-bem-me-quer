@@ -1012,7 +1012,7 @@ function ReportsDashboard({ live }: { live: any }) {
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, children }: { title: string; children: import("react").ReactNode }) {
   return (
     <div
       className="rounded-lg p-5"
