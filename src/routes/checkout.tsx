@@ -1,9 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, MapPin } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { Button } from "@/components/ui/button";
@@ -20,18 +18,7 @@ function CheckoutPage() {
   const navigate = useNavigate();
   const { items, subtotal, clear } = useCart();
 
-  const { data: settings } = useQuery({
-    queryKey: ["public-settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("settings").select("key,value");
-      if (error) throw error;
-      const map: Record<string, unknown> = {};
-      for (const row of data ?? []) map[row.key] = row.value;
-      return map;
-    },
-  });
-
-  const deliveryFee = Number((settings?.delivery_fee as number) ?? 15);
+  const deliveryFee = 15;
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
   const [submitting, setSubmitting] = useState(false);
 
