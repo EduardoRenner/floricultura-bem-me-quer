@@ -120,7 +120,7 @@ export function CinematicIntro() {
           boxShadow: "0 4px 30px rgba(196,168,79,0.3)",
         }}
       >
-        FL
+        BMQ
       </div>
 
       <h1
