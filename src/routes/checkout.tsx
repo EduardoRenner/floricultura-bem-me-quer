@@ -57,43 +57,77 @@ function CheckoutPage() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     setSubmitting(true);
+
+    // Validate required fields
+    const name = String(fd.get("name") ?? "").trim();
+    const phone = String(fd.get("phone") ?? "").trim();
+    const email = (fd.get("email") as string)?.trim() || "";
+
+    if (name.length < 2) {
+      toast.error("Por favor, informe seu nome completo.");
+      setSubmitting(false);
+      return;
+    }
+    if (phone.replace(/\D/g, "").length < 10) {
+      toast.error("Informe um telefone válido com DDD.");
+      setSubmitting(false);
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Informe um e-mail válido.");
+      setSubmitting(false);
+      return;
+    }
+    if (deliveryType === "delivery") {
+      const rua = String(fd.get("rua") ?? "").trim();
+      const numero = String(fd.get("numero") ?? "").trim();
+      const bairro = String(fd.get("bairro") ?? "").trim();
+      if (!rua || !numero || !bairro) {
+        toast.error("Preencha o endereço completo para entrega.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
-      const payload = {
-        customer_name: String(fd.get("name") ?? ""),
-        customer_phone: String(fd.get("phone") ?? ""),
-        customer_email: (fd.get("email") as string) || null,
-        delivery_type: deliveryType,
-        delivery_address:
-          deliveryType === "delivery"
-            ? {
-                rua: String(fd.get("rua") ?? ""),
-                numero: String(fd.get("numero") ?? ""),
-                bairro: String(fd.get("bairro") ?? ""),
-                cep: String(fd.get("cep") ?? ""),
-                complemento: String(fd.get("complemento") ?? ""),
-              }
-            : null,
-        delivery_date: (fd.get("date") as string) || null,
-        delivery_time: (fd.get("time") as string) || null,
-        payment_method: String(fd.get("payment") ?? "Pix"),
-        notes: (fd.get("notes") as string) || null,
-        total,
-        items: items.map((i) => ({
-          id: i.id,
-          name: i.name,
-          price: i.price,
-          quantity: i.quantity,
-        })),
-      } as never;
+      const recalculatedTotal =
+        items.reduce((sum, i) => sum + i.price * i.quantity, 0) +
+        (deliveryType === "delivery" ? deliveryFee : 0);
       const { data, error } = await supabase
         .from("orders")
-        .insert(payload)
+        .insert({
+          customer_name: name,
+          customer_phone: phone,
+          customer_email: email || null,
+          delivery_type: deliveryType,
+          delivery_address:
+            deliveryType === "delivery"
+              ? {
+                  rua: String(fd.get("rua") ?? "").trim(),
+                  numero: String(fd.get("numero") ?? "").trim(),
+                  bairro: String(fd.get("bairro") ?? "").trim(),
+                  cep: String(fd.get("cep") ?? "").trim(),
+                  complemento: String(fd.get("complemento") ?? "").trim(),
+                }
+              : null,
+          delivery_date: (fd.get("date") as string) || null,
+          delivery_time: (fd.get("time") as string) || null,
+          payment_method: String(fd.get("payment") ?? "Pix"),
+          notes: (fd.get("notes") as string)?.trim() || null,
+          total: recalculatedTotal,
+          items: items.map((i) => ({
+            id: i.id,
+            name: i.name,
+            price: i.price,
+            quantity: i.quantity,
+          })),
+        })
         .select("order_number")
         .single();
       if (error) throw error;
-      clear();
       toast.success("Pedido realizado com sucesso!");
       navigate({ to: "/pedido/$orderNumber", params: { orderNumber: data.order_number } });
+      try { clear(); } catch { /* noop */ }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao enviar pedido";
       toast.error(msg);
