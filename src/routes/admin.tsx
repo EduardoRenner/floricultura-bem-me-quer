@@ -659,6 +659,8 @@ function SettingsTab({ password }: { password: string }) {
     },
   });
 
+  if (!rows) return <div className="p-6 text-muted-foreground">Carregando configurações…</div>;
+
   return (
     <div>
       <h1 className="font-display text-3xl">Configurações</h1>
