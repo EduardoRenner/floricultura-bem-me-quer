@@ -167,6 +167,10 @@ function LoginCard({ onLogin }: { onLogin: (p: string) => void }) {
       <form
         onSubmit={async (e) => {
           e.preventDefault();
+          if (value.length < 6) {
+            toast.error("Senha muito curta.");
+            return;
+          }
           setLoading(true);
           try {
             await login({ data: { password: value } });
