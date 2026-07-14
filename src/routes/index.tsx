@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ProductCard, type Product } from "@/components/site/ProductCard";
+import { SurpriseMeSection, SurpriseMeButton } from "@/components/site/SurpriseMe";
+import { OccasionsHomeSection } from "@/components/site/OccasionsGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -108,6 +110,12 @@ function Home() {
         </div>
       </section>
 
+      {/* SURPREENDA-ME */}
+      <SurpriseMeSection products={products ?? []} />
+
+      {/* OCASIÕES */}
+      <OccasionsHomeSection />
+
       {/* SOBRE */}
       <section id="sobre" className="mx-auto max-w-6xl px-4 py-20">
         <div className="grid gap-10 md:grid-cols-2 md:items-center">
@@ -149,7 +157,7 @@ function Home() {
             <p className="max-w-xl text-muted-foreground">
               Buquês, arranjos e plantas cuidadosamente selecionados para cada ocasião.
             </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               {CATEGORIES.map((c) => (
                 <button
                   key={c}
@@ -164,6 +172,11 @@ function Home() {
                   {c}
                 </button>
               ))}
+              <SurpriseMeButton
+                products={products ?? []}
+                variant="pill"
+                label="✨ Surpreenda-me"
+              />
             </div>
           </div>
 
