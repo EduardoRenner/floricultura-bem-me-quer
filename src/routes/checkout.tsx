@@ -76,52 +76,69 @@ function CheckoutPage() {
       }
     }
 
-    try {
-      const recalculatedTotal =
-        items.reduce((sum, i) => sum + i.price * i.quantity, 0) +
-        (deliveryType === "delivery" ? deliveryFee : 0);
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
-          customer_name: name,
-          customer_phone: phone,
-          customer_email: email || null,
-          delivery_type: deliveryType,
-          delivery_address:
-            deliveryType === "delivery"
-              ? {
-                  rua: String(fd.get("rua") ?? "").trim(),
-                  numero: String(fd.get("numero") ?? "").trim(),
-                  bairro: String(fd.get("bairro") ?? "").trim(),
-                  cep: String(fd.get("cep") ?? "").trim(),
-                  complemento: String(fd.get("complemento") ?? "").trim(),
-                }
-              : null,
-          delivery_date: (fd.get("date") as string) || null,
-          delivery_time: (fd.get("time") as string) || null,
-          payment_method: String(fd.get("payment") ?? "Pix"),
-          notes: (fd.get("notes") as string)?.trim() || null,
-          total: recalculatedTotal,
-          items: items.map((i) => ({
-            id: i.id,
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity,
-          })),
-        })
-        .select("order_number")
-        .single();
-      if (error) throw error;
-      toast.success("Pedido realizado com sucesso!");
-      navigate({ to: "/pedido/$orderNumber", params: { orderNumber: data.order_number } });
-      try { clear(); } catch { /* noop */ }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao enviar pedido";
-      toast.error(msg);
-    } finally {
-      setSubmitting(false);
-    }
+    // Build order number locally
+    const orderNumber = "BMQ-" + Math.floor(1000 + Math.random() * 9000);
+
+    // Recalculate total
+    const recalculatedTotal =
+      items.reduce((sum, i) => sum + i.price * i.quantity, 0) +
+      (deliveryType === "delivery" ? deliveryFee : 0);
+
+    // Build WhatsApp message
+    const itemLines = items
+      .map((i) => `  • ${i.quantity}x ${i.name} — ${formatBRL(i.price * i.quantity)}`)
+      .join("\n");
+
+    const deliveryLine =
+      deliveryType === "delivery"
+        ? `🏠 Entrega\n  Endereço: ${String(fd.get("rua") ?? "").trim()}, ${String(fd.get("numero") ?? "").trim()} - ${String(fd.get("bairro") ?? "").trim()}${String(fd.get("cep") ?? "").trim() ? " · CEP " + String(fd.get("cep") ?? "").trim() : ""}${String(fd.get("complemento") ?? "").trim() ? " · " + String(fd.get("complemento") ?? "").trim() : ""}`
+        : `🏪 Retirada na loja`;
+
+    const dateLine = (fd.get("date") as string)
+      ? `📅 Data desejada: ${fd.get("date")}${fd.get("time") ? " às " + fd.get("time") : ""}`
+      : "";
+
+    const paymentLine = `💳 Pagamento: ${String(fd.get("payment") ?? "Pix")}`;
+
+    const notesLine = (fd.get("notes") as string)?.trim()
+      ? `📝 Observações: ${(fd.get("notes") as string).trim()}`
+      : "";
+
+    const message = [
+      `🌸 *Novo Pedido — ${orderNumber}*`,
+      ``,
+      `👤 *Cliente:* ${name}`,
+      `📞 *Telefone:* ${phone}`,
+      email ? `📧 *E-mail:* ${email}` : "",
+      ``,
+      `🛒 *Itens:*`,
+      itemLines,
+      ``,
+      deliveryLine,
+      dateLine,
+      paymentLine,
+      notesLine,
+      ``,
+      `💰 *Total: ${formatBRL(recalculatedTotal)}*`,
+      ``,
+      `Pedido feito pelo site — Floricultura Bem Me Quer`,
+    ]
+      .filter((l) => l !== "")
+      .join("\n");
+
+    const whatsappUrl = `https://wa.me/554999273376?text=${encodeURIComponent(message)}`;
+
+    // Clear cart and redirect
+    try { clear(); } catch { /* noop */ }
+    toast.success("Redirecionando para o WhatsApp… 🌸");
+    setTimeout(() => {
+      window.open(whatsappUrl, "_blank");
+      navigate({ to: "/" });
+    }, 800);
+
+    setSubmitting(false);
   }
+
 
   return (
     <div className="min-h-screen">
