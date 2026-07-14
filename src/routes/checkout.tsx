@@ -59,23 +59,23 @@ function CheckoutPage() {
     setSubmitting(true);
     try {
       const payload = {
-        customer_name: String(fd.get("name")),
-        customer_phone: String(fd.get("phone")),
+        customer_name: String(fd.get("name") ?? ""),
+        customer_phone: String(fd.get("phone") ?? ""),
         customer_email: (fd.get("email") as string) || null,
         delivery_type: deliveryType,
         delivery_address:
           deliveryType === "delivery"
             ? {
-                rua: fd.get("rua"),
-                numero: fd.get("numero"),
-                bairro: fd.get("bairro"),
-                cep: fd.get("cep"),
-                complemento: fd.get("complemento"),
+                rua: String(fd.get("rua") ?? ""),
+                numero: String(fd.get("numero") ?? ""),
+                bairro: String(fd.get("bairro") ?? ""),
+                cep: String(fd.get("cep") ?? ""),
+                complemento: String(fd.get("complemento") ?? ""),
               }
             : null,
         delivery_date: (fd.get("date") as string) || null,
         delivery_time: (fd.get("time") as string) || null,
-        payment_method: String(fd.get("payment")),
+        payment_method: String(fd.get("payment") ?? "Pix"),
         notes: (fd.get("notes") as string) || null,
         total,
         items: items.map((i) => ({
@@ -84,7 +84,7 @@ function CheckoutPage() {
           price: i.price,
           quantity: i.quantity,
         })),
-      };
+      } as never;
       const { data, error } = await supabase
         .from("orders")
         .insert(payload)
