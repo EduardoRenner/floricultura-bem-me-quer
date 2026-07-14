@@ -273,7 +273,7 @@ function OrdersTab({ password }: { password: string }) {
 
   const { data: orders } = useQuery({
     queryKey: ["admin-orders"],
-    queryFn: () => list({ data: { password } }) as Promise<Order[]>,
+    queryFn: async () => (await list({ data: { password } })) as unknown as Order[],
   });
 
   const mutation = useMutation({
