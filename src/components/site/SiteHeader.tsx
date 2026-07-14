@@ -41,7 +41,7 @@ export function SiteHeader() {
             <a
               key={n.to}
               href={n.to}
-              className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+              className="text-sm font-medium text-foreground/90 transition-colors hover:text-accent"
             >
               {n.label}
             </a>
