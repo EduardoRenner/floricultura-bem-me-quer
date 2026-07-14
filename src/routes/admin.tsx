@@ -718,3 +718,317 @@ function SettingsTab({ password }: { password: string }) {
     </div>
   );
 }
+
+// ============ Reports Dashboard (Feature 10) ============
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  Area,
+  AreaChart,
+} from "recharts";
+
+type Period = "week" | "month" | "year";
+
+const WEEKLY_BY_PERIOD: Record<Period, number[]> = {
+  week: [320, 280, 410, 390, 520, 680, 0],
+  month: [1420, 1180, 1610, 1690, 1820, 2180, 0],
+  year: [15200, 13100, 16400, 17800, 21000, 27600, 0],
+};
+
+const MONTHLY_BY_PERIOD: Record<Period, number[]> = {
+  week: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2100],
+  month: [1200, 980, 1450, 1890, 2100, 2340, 1980, 2560, 2100, 1780, 2890, 3200],
+  year: [1200, 980, 1450, 1890, 2100, 2340, 1980, 2560, 2100, 1780, 2890, 3200],
+};
+
+const TOP_PRODUCTS = [
+  { name: "Rosa Vermelha (unitária)", value: 47 },
+  { name: "Buquê de Rosas (12un)", value: 34 },
+  { name: "Arranjo Romântico", value: 28 },
+  { name: "Arranjo Primavera", value: 22 },
+  { name: "Kit Presente Floral", value: 19 },
+];
+
+const STATUS_DATA = [
+  { name: "Entregue", value: 45, color: "#4CAF50" },
+  { name: "Pendente", value: 25, color: "#FFC107" },
+  { name: "Em preparo", value: 20, color: "#2196F3" },
+  { name: "Cancelado", value: 10, color: "#F44336" },
+];
+
+function ChartTooltip({ active, payload, label, suffix }: any) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div
+      style={{
+        background: "#1E2E1E",
+        border: "1px solid #C4A84F",
+        borderRadius: 8,
+        padding: "8px 12px",
+        color: "#F0EDD8",
+        fontSize: "0.85rem",
+      }}
+    >
+      {label && <div style={{ color: "#C4A84F", fontWeight: 600 }}>{label}</div>}
+      {payload.map((p: any, i: number) => (
+        <div key={i}>
+          {suffix === "R$"
+            ? formatBRL(Number(p.value))
+            : `${p.value}${suffix ? " " + suffix : ""}`}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportsDashboard({ live }: { live: any }) {
+  const [period, setPeriod] = useState<Period>("month");
+
+  const weeklyData = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d, i) => ({
+    day: d,
+    total: WEEKLY_BY_PERIOD[period][i],
+  }));
+  const monthlyData = [
+    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+  ].map((m, i) => ({ month: m, total: MONTHLY_BY_PERIOD[period][i] }));
+  const totalOrders = STATUS_DATA.reduce((s, x) => s + x.value, 0);
+
+  const statCards = [
+    { icon: "📦", label: "Pedidos hoje", value: live?.todayCount ?? 4 },
+    { icon: "⏳", label: "Pedidos pendentes", value: live?.pendingCount ?? 6 },
+    {
+      icon: "💰",
+      label: "Faturamento este mês",
+      value: live ? formatBRL(live.monthRevenue) : formatBRL(2340),
+    },
+    { icon: "🌸", label: "Produtos ativos", value: 10 },
+  ];
+
+  const summary = [
+    { icon: "📈", label: "Ticket médio", value: "R$ 127,40" },
+    { icon: "🏆", label: "Produto campeão", value: "Rosa Vermelha" },
+    { icon: "⏰", label: "Horário de pico", value: "10h–11h (Sáb)" },
+    { icon: "📅", label: "Melhor mês", value: "Dezembro" },
+  ];
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl" style={{ color: "#C4A84F" }}>
+            Dashboard
+          </h1>
+          <p className="text-sm text-muted-foreground">Relatórios e visão geral</p>
+        </div>
+        <div className="flex gap-1 rounded-full p-1" style={{ background: "#1E2E1E" }}>
+          {(
+            [
+              { id: "week", label: "Esta semana" },
+              { id: "month", label: "Este mês" },
+              { id: "year", label: "Este ano" },
+            ] as { id: Period; label: string }[]
+          ).map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              className="rounded-full px-3 py-1.5 text-xs transition"
+              style={
+                period === p.id
+                  ? { background: "#8B7A3A", color: "#1A2B1A", border: "1px solid #C4A84F" }
+                  : { color: "#F0EDD8", border: "1px solid #3A4A3A", background: "transparent" }
+              }
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {statCards.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-lg p-5"
+            style={{
+              background: "#1E2E1E",
+              borderLeft: "4px solid #C4A84F",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+            }}
+          >
+            <div className="text-2xl">{s.icon}</div>
+            <div className="mt-2 text-xs" style={{ color: "#9E9E7A" }}>
+              {s.label}
+            </div>
+            <div className="mt-1 font-display text-2xl" style={{ color: "#F0EDD8" }}>
+              {s.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Vendas por Dia da Semana">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={weeklyData}>
+              <CartesianGrid stroke="#3A4A3A" strokeDasharray="3 3" />
+              <XAxis dataKey="day" stroke="#F0EDD8" fontSize={12} />
+              <YAxis stroke="#F0EDD8" fontSize={12} />
+              <Tooltip content={<ChartTooltip suffix="R$" />} cursor={{ fill: "rgba(196,168,79,0.1)" }} />
+              <Bar dataKey="total" fill="#8B7A3A" radius={[4, 4, 0, 0]}>
+                {weeklyData.map((_, i) => (
+                  <Cell key={i} fill={i === 5 ? "#C4A84F" : "#8B7A3A"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Faturamento Mensal">
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={monthlyData}>
+              <defs>
+                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#C4A84F" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#C4A84F" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#3A4A3A" strokeDasharray="3 3" />
+              <XAxis dataKey="month" stroke="#F0EDD8" fontSize={12} />
+              <YAxis stroke="#F0EDD8" fontSize={12} />
+              <Tooltip content={<ChartTooltip suffix="R$" />} />
+              <Area
+                type="monotone"
+                dataKey="total"
+                stroke="#C4A84F"
+                strokeWidth={2}
+                fill="url(#revGrad)"
+                dot={{ fill: "#C4A84F", r: 3 }}
+                activeDot={{ r: 5, fill: "#C4A84F" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Produtos Mais Vendidos">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={TOP_PRODUCTS} layout="vertical" margin={{ left: 20 }}>
+              <defs>
+                <linearGradient id="topGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#8B7A3A" />
+                  <stop offset="100%" stopColor="#C4A84F" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#3A4A3A" strokeDasharray="3 3" />
+              <XAxis type="number" stroke="#F0EDD8" fontSize={12} />
+              <YAxis
+                dataKey="name"
+                type="category"
+                stroke="#F0EDD8"
+                fontSize={11}
+                width={140}
+              />
+              <Tooltip content={<ChartTooltip suffix="un" />} cursor={{ fill: "rgba(196,168,79,0.1)" }} />
+              <Bar dataKey="value" fill="url(#topGrad)" radius={[0, 4, 4, 0]} label={{ position: "right", fill: "#C4A84F", fontSize: 12 }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Pedidos por Status">
+          <div className="relative">
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={STATUS_DATA}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={2}
+                >
+                  {STATUS_DATA.map((s, i) => (
+                    <Cell key={i} fill={s.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<ChartTooltip suffix="%" />} />
+                <Legend
+                  verticalAlign="bottom"
+                  wrapperStyle={{ color: "#F0EDD8", fontSize: 12 }}
+                  formatter={(v, entry: any) => `${v} — ${entry?.payload?.value}%`}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div
+              style={{
+                position: "absolute",
+                top: "40%",
+                left: 0,
+                right: 0,
+                textAlign: "center",
+                color: "#C4A84F",
+                fontFamily: "'Playfair Display', serif",
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                pointerEvents: "none",
+              }}
+            >
+              {totalOrders}
+            </div>
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* Summary cards */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {summary.map((s) => (
+          <div
+            key={s.label}
+            className="rounded-lg p-4"
+            style={{ background: "#1E2E1E", border: "1px solid #3A4A3A" }}
+          >
+            <div className="text-xl">{s.icon}</div>
+            <div className="mt-1 text-xs" style={{ color: "#9E9E7A" }}>
+              {s.label}
+            </div>
+            <div className="font-display text-lg" style={{ color: "#F0EDD8" }}>
+              {s.value}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-lg p-5"
+      style={{
+        background: "#1E2E1E",
+        border: "1px solid #3A4A3A",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+      }}
+    >
+      <h3
+        className="mb-4 font-display text-lg"
+        style={{ color: "#C4A84F" }}
+      >
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
