@@ -167,6 +167,10 @@ function LoginCard({ onLogin }: { onLogin: (p: string) => void }) {
       <form
         onSubmit={async (e) => {
           e.preventDefault();
+          if (value.length < 6) {
+            toast.error("Senha muito curta.");
+            return;
+          }
           setLoading(true);
           try {
             await login({ data: { password: value } });
@@ -350,8 +354,8 @@ function OrdersTab({ password }: { password: string }) {
                           <p className="text-sm">Pagamento: {o.payment_method}</p>
                           {o.delivery_address && (
                             <p className="text-sm text-muted-foreground">
-                              {o.delivery_address.rua}, {o.delivery_address.numero} -{" "}
-                              {o.delivery_address.bairro}
+                              {String(o.delivery_address.rua ?? "")}, {String(o.delivery_address.numero ?? "")} -{" "}
+                              {String(o.delivery_address.bairro ?? "")}
                             </p>
                           )}
                           <div className="mt-3">
@@ -654,6 +658,8 @@ function SettingsTab({ password }: { password: string }) {
       toast.success("Configuração salva");
     },
   });
+
+  if (!rows) return <div className="p-6 text-muted-foreground">Carregando configurações…</div>;
 
   return (
     <div>
