@@ -99,6 +99,36 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const adminUploadProductImage = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { password: string; fileName: string; contentType: string; base64: string }) => data,
+  )
+  .handler(async ({ data }) => {
+    const admin = await verifyAdmin(data.password);
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(data.contentType)) {
+      throw new Error("Formato de imagem não suportado (use JPG, PNG, WEBP ou GIF)");
+    }
+
+    const buffer = Buffer.from(data.base64, "base64");
+    const maxBytes = 5 * 1024 * 1024; // 5MB
+    if (buffer.byteLength > maxBytes) {
+      throw new Error("Imagem muito grande (máximo 5MB)");
+    }
+
+    const ext = data.fileName.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${crypto.randomUUID()}.${ext}`;
+
+    const { error: uploadError } = await admin.storage
+      .from("product-images")
+      .upload(path, buffer, { contentType: data.contentType, upsert: false });
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: publicUrlData } = admin.storage.from("product-images").getPublicUrl(path);
+    return { url: publicUrlData.publicUrl };
+  });
+
 export const adminDeleteProduct = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string; id: string }) => data)
   .handler(async ({ data }) => {

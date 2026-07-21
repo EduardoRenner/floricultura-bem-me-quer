@@ -6,7 +6,9 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   BarChart3,
   Flower2,
+  ImageUp,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Package,
   Pencil,
@@ -24,6 +26,7 @@ import {
   adminStats,
   adminUpdateOrderStatus,
   adminUpdateSetting,
+  adminUploadProductImage,
   adminUpsertProduct,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
@@ -405,8 +408,43 @@ function ProductsTab({ password }: { password: string }) {
   const list = useServerFn(adminListProducts);
   const upsert = useServerFn(adminUpsertProduct);
   const del = useServerFn(adminDeleteProduct);
+  const uploadImage = useServerFn(adminUploadProductImage);
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const fileToBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(",")[1] ?? "");
+      };
+      reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageFile = async (file: File) => {
+    if (!editing) return;
+    setUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+      const result = await uploadImage({
+        data: {
+          password,
+          fileName: file.name,
+          contentType: file.type,
+          base64,
+        },
+      });
+      setEditing((prev) => (prev ? { ...prev, image_url: result.url } : prev));
+      toast.success("Imagem enviada!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar imagem");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
@@ -592,11 +630,45 @@ function ProductsTab({ password }: { password: string }) {
                 </div>
               </div>
               <div>
-                <Label>URL da imagem</Label>
+                <Label>Imagem do produto</Label>
+                <div className="flex items-center gap-3">
+                  {editing.image_url && (
+                    <img
+                      src={editing.image_url}
+                      alt="Preview"
+                      className="h-16 w-16 rounded-md object-cover border"
+                    />
+                  )}
+                  <label className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageFile(file);
+                        e.target.value = "";
+                      }}
+                    />
+                    <span className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-accent">
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <ImageUp className="h-4 w-4" /> Escolher imagem do celular/computador
+                        </>
+                      )}
+                    </span>
+                  </label>
+                </div>
                 <Input
                   value={editing.image_url ?? ""}
                   onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
-                  placeholder="https://…"
+                  placeholder="ou cole uma URL manualmente"
+                  className="mt-2"
                 />
               </div>
               <div className="flex items-center gap-2">
