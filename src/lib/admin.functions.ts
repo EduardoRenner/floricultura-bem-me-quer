@@ -291,6 +291,8 @@ export const adminStats = createServerFn({ method: "POST" })
       const items = Array.isArray(o.items) ? (o.items as OrderItem[]) : [];
       for (const it of items) {
         const name = (it?.name ?? "").toString().trim() || "Sem nome";
+        // A taxa de entrega entra como item para o total bater, mas não é produto.
+        if (name.toLowerCase() === "taxa de entrega") continue;
         const qty = Number(it?.quantity) || 0;
         if (qty > 0) prodMap.set(name, (prodMap.get(name) ?? 0) + qty);
       }

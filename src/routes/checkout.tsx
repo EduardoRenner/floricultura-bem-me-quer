@@ -11,6 +11,21 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/lib/cart";
 import { ADDRESS, formatBRL } from "@/lib/shop";
+import { supabase } from "@/integrations/supabase/client";
+
+// Converte a data do input (YYYY-MM-DD) para o formato brasileiro DD/MM/AAAA.
+function formatDateBR(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+// Mapeia os valores da tela para os aceitos pelo banco.
+const PAYMENT_DB: Record<string, string> = {
+  Dinheiro: "dinheiro",
+  Pix: "pix",
+  "Cartão": "cartao",
+};
 
 export const Route = createFileRoute("/checkout")({ component: CheckoutPage });
 
@@ -65,53 +80,95 @@ function CheckoutPage() {
       setSubmitting(false);
       return;
     }
-    if (deliveryType === "delivery") {
-      const rua = String(fd.get("rua") ?? "").trim();
-      const numero = String(fd.get("numero") ?? "").trim();
-      const bairro = String(fd.get("bairro") ?? "").trim();
-      if (!rua || !numero || !bairro) {
-        toast.error("Preencha o endereço completo para entrega.");
-        setSubmitting(false);
-        return;
-      }
+    // Campos do endereço / extras
+    const rua = String(fd.get("rua") ?? "").trim();
+    const numero = String(fd.get("numero") ?? "").trim();
+    const bairro = String(fd.get("bairro") ?? "").trim();
+
+    if (deliveryType === "delivery" && (!rua || !numero || !bairro)) {
+      toast.error("Preencha o endereço completo para entrega.");
+      setSubmitting(false);
+      return;
     }
 
-    // Build order number locally
-    const orderNumber = "BMQ-" + Math.floor(1000 + Math.random() * 9000);
+    const cep = String(fd.get("cep") ?? "").trim();
+    const complemento = String(fd.get("complemento") ?? "").trim();
+    const dateRaw = String(fd.get("date") ?? "").trim();
+    const timeRaw = String(fd.get("time") ?? "").trim();
+    const notes = String(fd.get("notes") ?? "").trim();
+    const paymentLabel = String(fd.get("payment") ?? "Pix");
+    const paymentDb = PAYMENT_DB[paymentLabel] ?? "pix";
+    const deliveryDb = deliveryType === "delivery" ? "entrega" : "retirada";
 
-    // Recalculate total
-    const recalculatedTotal =
-      items.reduce((sum, i) => sum + i.price * i.quantity, 0) +
-      (deliveryType === "delivery" ? deliveryFee : 0);
+    // Número do pedido gerado no site (o mesmo vai para o banco e para o WhatsApp)
+    const orderNumber = "BMQ-" + Date.now().toString().slice(-6);
 
-    // Build WhatsApp message
+    // Total = produtos + taxa de entrega (quando houver)
+    const productsTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const recalculatedTotal = productsTotal + (deliveryType === "delivery" ? deliveryFee : 0);
+
+    // Itens que vão para o banco. Incluímos a taxa de entrega como item para que
+    // o total calculado pelo trigger (soma dos itens) bata com o total mostrado.
+    const dbItems: { id?: string; name: string; quantity: number; price: number }[] = items.map(
+      (i) => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price }),
+    );
+    if (deliveryType === "delivery") {
+      dbItems.push({ name: "Taxa de entrega", quantity: 1, price: deliveryFee });
+    }
+
+    // Abre a aba do WhatsApp já dentro do clique (evita bloqueio de popup);
+    // a URL é definida depois que o pedido é salvo.
+    const waWindow = window.open("", "_blank");
+
+    // Salva o pedido no banco (passa a aparecer no dashboard/admin). Se falhar,
+    // seguimos para o WhatsApp mesmo assim — o cliente nunca fica travado.
+    try {
+      const { error } = await supabase.from("orders").insert({
+        order_number: orderNumber,
+        customer_name: name,
+        customer_phone: phone,
+        customer_email: email || null,
+        delivery_type: deliveryDb,
+        delivery_address:
+          deliveryType === "delivery" ? { rua, numero, bairro, cep, complemento } : null,
+        delivery_date: dateRaw || null,
+        delivery_time: timeRaw || null,
+        payment_method: paymentDb,
+        notes: notes || null,
+        status: "pendente",
+        total: recalculatedTotal,
+        items: dbItems,
+      });
+      if (error) console.error("Falha ao salvar o pedido:", error.message);
+    } catch (err) {
+      console.error("Erro ao salvar o pedido:", err);
+    }
+
+    // Mensagem do WhatsApp — texto limpo, sem símbolos que aparecem como "?"
     const itemLines = items
-      .map((i) => `  • ${i.quantity}x ${i.name} — ${formatBRL(i.price * i.quantity)}`)
+      .map((i) => `  - ${i.quantity}x ${i.name} — ${formatBRL(i.price * i.quantity)}`)
       .join("\n");
 
     const deliveryLine =
       deliveryType === "delivery"
-        ? `🏠 Entrega\n  Endereço: ${String(fd.get("rua") ?? "").trim()}, ${String(fd.get("numero") ?? "").trim()} - ${String(fd.get("bairro") ?? "").trim()}${String(fd.get("cep") ?? "").trim() ? " · CEP " + String(fd.get("cep") ?? "").trim() : ""}${String(fd.get("complemento") ?? "").trim() ? " · " + String(fd.get("complemento") ?? "").trim() : ""}`
-        : `🏪 Retirada na loja`;
+        ? `*Entrega*\n  Endereço: ${rua}, ${numero} - ${bairro}${cep ? " · CEP " + cep : ""}${complemento ? " · " + complemento : ""}`
+        : `*Retirada na loja*`;
 
-    const dateLine = (fd.get("date") as string)
-      ? `📅 Data desejada: ${fd.get("date")}${fd.get("time") ? " às " + fd.get("time") : ""}`
+    const dateLine = dateRaw
+      ? `*Data desejada:* ${formatDateBR(dateRaw)}${timeRaw ? " às " + timeRaw : ""}`
       : "";
 
-    const paymentLine = `💳 Pagamento: ${String(fd.get("payment") ?? "Pix")}`;
-
-    const notesLine = (fd.get("notes") as string)?.trim()
-      ? `📝 Observações: ${(fd.get("notes") as string).trim()}`
-      : "";
+    const paymentLine = `*Pagamento:* ${paymentLabel}`;
+    const notesLine = notes ? `*Observações:* ${notes}` : "";
 
     const message = [
-      `🌸 *Novo Pedido — ${orderNumber}*`,
+      `*Novo Pedido — ${orderNumber}*`,
       ``,
-      `👤 *Cliente:* ${name}`,
-      `📞 *Telefone:* ${phone}`,
-      email ? `📧 *E-mail:* ${email}` : "",
+      `*Cliente:* ${name}`,
+      `*Telefone:* ${phone}`,
+      email ? `*E-mail:* ${email}` : "",
       ``,
-      `🛒 *Itens:*`,
+      `*Itens:*`,
       itemLines,
       ``,
       deliveryLine,
@@ -119,7 +176,7 @@ function CheckoutPage() {
       paymentLine,
       notesLine,
       ``,
-      `💰 *Total: ${formatBRL(recalculatedTotal)}*`,
+      `*Total: ${formatBRL(recalculatedTotal)}*`,
       ``,
       `Pedido feito pelo site — Floricultura Bem Me Quer`,
     ]
@@ -128,13 +185,16 @@ function CheckoutPage() {
 
     const whatsappUrl = `https://wa.me/554999273376?text=${encodeURIComponent(message)}`;
 
-    // Clear cart and redirect
     try { clear(); } catch { /* noop */ }
-    toast.success("Redirecionando para o WhatsApp… 🌸");
-    setTimeout(() => {
-      window.open(whatsappUrl, "_blank");
-      navigate({ to: "/" });
-    }, 800);
+    toast.success("Pedido registrado! Abrindo o WhatsApp… 🌸");
+
+    if (waWindow) {
+      waWindow.location.href = whatsappUrl;
+    } else {
+      // Popup bloqueado: navega na própria aba
+      window.location.href = whatsappUrl;
+    }
+    navigate({ to: "/" });
 
     setSubmitting(false);
   }
