@@ -16,19 +16,19 @@ export type Database = {
     Tables: {
       admin_login_attempts: {
         Row: {
-          created_at: string
+          attempted_at: string
           id: number
-          succeeded: boolean
+          ip: string
         }
         Insert: {
-          created_at?: string
+          attempted_at?: string
           id?: never
-          succeeded: boolean
+          ip: string
         }
         Update: {
-          created_at?: string
+          attempted_at?: string
           id?: never
-          succeeded?: boolean
+          ip?: string
         }
         Relationships: []
       }
@@ -154,6 +154,10 @@ export type Database = {
       set_admin_password: {
         Args: { _new_password: string }
         Returns: undefined
+      }
+      verify_admin_login: {
+        Args: { _ip: string; _password: string }
+        Returns: string
       }
       verify_admin_password: { Args: { _password: string }; Returns: boolean }
     }
