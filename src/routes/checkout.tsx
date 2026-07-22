@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useServerFn } from "@tanstack/react-start";
 import { useCart } from "@/lib/cart";
 import { ADDRESS, formatBRL } from "@/lib/shop";
-import { supabase } from "@/integrations/supabase/client";
+import { createOrder } from "@/lib/order.functions";
 
 // Converte a data do input (YYYY-MM-DD) para o formato brasileiro DD/MM/AAAA.
 function formatDateBR(iso: string): string {
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/checkout")({ component: CheckoutPage });
 function CheckoutPage() {
   const navigate = useNavigate();
   const { items, subtotal, clear } = useCart();
+  const createOrderFn = useServerFn(createOrder);
 
   const deliveryFee = 15;
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
@@ -98,10 +100,10 @@ function CheckoutPage() {
     const notes = String(fd.get("notes") ?? "").trim();
     const paymentLabel = String(fd.get("payment") ?? "Pix");
     const paymentDb = PAYMENT_DB[paymentLabel] ?? "pix";
-    const deliveryDb = deliveryType === "delivery" ? "entrega" : "retirada";
 
-    // Número do pedido gerado no site (o mesmo vai para o banco e para o WhatsApp)
-    const orderNumber = "BMQ-" + Date.now().toString().slice(-6);
+    // Número do pedido: preferimos o número sequencial devolvido pelo banco;
+    // se o salvamento falhar, usamos este como fallback (cliente nunca trava).
+    let orderNumber = "BMQ-" + Date.now().toString().slice(-6);
 
     // Total = produtos + taxa de entrega (quando houver)
     const productsTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -120,28 +122,27 @@ function CheckoutPage() {
     // a URL é definida depois que o pedido é salvo.
     const waWindow = window.open("", "_blank");
 
-    // Salva o pedido no banco (passa a aparecer no dashboard/admin). Se falhar,
-    // seguimos para o WhatsApp mesmo assim — o cliente nunca fica travado.
+    // Salva o pedido via server function (service role) e recebe o número
+    // sequencial gerado. Se falhar, seguimos para o WhatsApp mesmo assim.
     try {
-      const { error } = await supabase.from("orders").insert({
-        order_number: orderNumber,
-        customer_name: name,
-        customer_phone: phone,
-        customer_email: email || null,
-        delivery_type: deliveryDb,
-        delivery_address:
-          deliveryType === "delivery" ? { rua, numero, bairro, cep, complemento } : null,
-        delivery_date: dateRaw || null,
-        delivery_time: timeRaw || null,
-        payment_method: paymentDb,
-        notes: notes || null,
-        status: "pendente",
-        total: recalculatedTotal,
-        items: dbItems,
+      const res = await createOrderFn({
+        data: {
+          customer_name: name,
+          customer_phone: phone,
+          customer_email: email || null,
+          delivery_type: deliveryType,
+          delivery_address:
+            deliveryType === "delivery" ? { rua, numero, bairro, cep, complemento } : null,
+          delivery_date: dateRaw || null,
+          delivery_time: timeRaw || null,
+          payment_method: paymentDb,
+          notes: notes || null,
+          items: dbItems,
+        },
       });
-      if (error) console.error("Falha ao salvar o pedido:", error.message);
+      if (res?.orderNumber) orderNumber = res.orderNumber;
     } catch (err) {
-      console.error("Erro ao salvar o pedido:", err);
+      console.error("Falha ao salvar o pedido:", err);
     }
 
     // Mensagem do WhatsApp — texto limpo, sem símbolos que aparecem como "?"
