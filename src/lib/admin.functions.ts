@@ -1,15 +1,41 @@
 import { createServerFn } from "@tanstack/react-start";
 
+// IP do cliente para o rate limiting. Em produção o app roda num Cloudflare
+// Worker, que define `cf-connecting-ip` de forma confiável (o cliente não
+// consegue forjar). Fallback para o primeiro hop de x-forwarded-for.
+async function getClientIp(): Promise<string> {
+  try {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const headers = getRequest()?.headers;
+    if (!headers) return "unknown";
+    return (
+      headers.get("cf-connecting-ip") ||
+      headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      headers.get("x-real-ip") ||
+      "unknown"
+    );
+  } catch {
+    return "unknown";
+  }
+}
+
 async function verifyAdmin(password: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   if (typeof password !== "string" || password.length === 0 || password.length > 200) {
     throw new Error("Senha incorreta");
   }
-  const { data, error } = await supabaseAdmin.rpc("verify_admin_password", {
+  const ip = await getClientIp();
+  // verify_admin_login faz rate limiting por IP (só conta falhas) + verifica a
+  // senha (bcrypt) atomicamente. Retorna 'ok' | 'invalid' | 'locked'.
+  const { data, error } = await supabaseAdmin.rpc("verify_admin_login", {
     _password: password,
+    _ip: ip,
   });
   if (error) throw new Error("Configuração indisponível");
-  if (!data) throw new Error("Senha incorreta");
+  if (data === "locked") {
+    throw new Error("Muitas tentativas de login. Aguarde alguns minutos e tente novamente.");
+  }
+  if (data !== "ok") throw new Error("Senha incorreta");
   return supabaseAdmin;
 }
 
@@ -169,40 +195,164 @@ export const adminUpdateSetting = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+// Brasil é UTC-3 e não observa horário de verão desde 2019.
+// O app roda num Cloudflare Worker (UTC), então convertemos os timestamps
+// para o horário de São Paulo antes de extrair dia/mês/hora, senão pedidos
+// do fim da noite cairiam no dia seguinte.
+const SP_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+// Instante UTC correspondente à meia-noite (SP) de hoje / início do mês / do ano.
+function spStartOf(unit: "day" | "month" | "year", base = Date.now()): Date {
+  const local = new Date(base - SP_OFFSET_MS); // "agora" em SP, lido via getUTC*
+  const y = local.getUTCFullYear();
+  const m = unit === "year" ? 0 : local.getUTCMonth();
+  const d = unit === "day" ? local.getUTCDate() : 1;
+  return new Date(Date.UTC(y, m, d, 0, 0, 0) + SP_OFFSET_MS);
+}
+
+// Converte um timestamp (ISO/UTC) para um Date cujos getUTC* já refletem SP.
+function toSP(iso: string): Date {
+  return new Date(new Date(iso).getTime() - SP_OFFSET_MS);
+}
+
+const MONTH_NAMES = [
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+];
+
+type OrderRow = {
+  total: number;
+  status: string;
+  items: unknown;
+  created_at: string;
+};
+type OrderItem = { name?: string; quantity?: number };
+
 export const adminStats = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
 
-    const [{ count: todayCount }, { count: pendingCount }, { data: monthOrders }] =
-      await Promise.all([
-        admin
-          .from("orders")
-          .select("*", { count: "exact", head: true })
-          .gte("created_at", startOfDay.toISOString()),
-        admin
-          .from("orders")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pendente"),
-        admin
-          .from("orders")
-          .select("total")
-          .gte("created_at", startOfMonth.toISOString())
-          .neq("status", "cancelado"),
-      ]);
+    const startOfDay = spStartOf("day");
+    const startOfYear = spStartOf("year");
+    const now = Date.now();
+    const since90 = now - 90 * 24 * 60 * 60 * 1000;
+    const currentMonth = new Date(now - SP_OFFSET_MS).getUTCMonth();
 
-    const monthRevenue = (monthOrders ?? []).reduce(
-      (s: number, r: { total: number }) => s + Number(r.total),
-      0,
-    );
+    const [
+      { count: todayCount },
+      { count: pendingCount },
+      { count: activeProducts },
+      { data: yearOrders },
+    ] = await Promise.all([
+      admin
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", startOfDay.toISOString()),
+      admin
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pendente"),
+      admin
+        .from("products")
+        .select("*", { count: "exact", head: true })
+        .eq("active", true),
+      admin
+        .from("orders")
+        .select("total,status,items,created_at")
+        .gte("created_at", startOfYear.toISOString())
+        .order("created_at", { ascending: true }),
+    ]);
+
+    const rows = (yearOrders ?? []) as OrderRow[];
+    // "Válidos" = tudo que não foi cancelado (receita esperada do período).
+    const valid = rows.filter((o) => o.status !== "cancelado");
+
+    // Faturamento por mês (ano atual) — Jan..Dez
+    const monthlyRevenue = Array(12).fill(0) as number[];
+    // Faturamento por dia da semana (últimos 90 dias) — Dom..Sáb (getUTCDay)
+    const weekdayRaw = Array(7).fill(0) as number[];
+    // Contagem de produtos vendidos (a partir de items)
+    const prodMap = new Map<string, number>();
+    // Distribuição por hora do dia (0..23), últimos 90 dias
+    const hourCount = Array(24).fill(0) as number[];
+
+    for (const o of valid) {
+      const d = toSP(o.created_at);
+      const total = Number(o.total) || 0;
+      monthlyRevenue[d.getUTCMonth()] += total;
+
+      const ts = new Date(o.created_at).getTime();
+      if (ts >= since90) {
+        weekdayRaw[d.getUTCDay()] += total;
+        hourCount[d.getUTCHours()] += 1;
+      }
+
+      const items = Array.isArray(o.items) ? (o.items as OrderItem[]) : [];
+      for (const it of items) {
+        const name = (it?.name ?? "").toString().trim() || "Sem nome";
+        const qty = Number(it?.quantity) || 0;
+        if (qty > 0) prodMap.set(name, (prodMap.get(name) ?? 0) + qty);
+      }
+    }
+
+    // Reordena Dom..Sáb -> Seg..Dom para bater com o gráfico
+    const weekdayRevenue = [1, 2, 3, 4, 5, 6, 0].map((i) => weekdayRaw[i]);
+
+    // Status (ano inteiro, incluindo cancelado) para o gráfico de pizza
+    const statusCounts: Record<string, number> = {
+      pendente: 0,
+      em_preparo: 0,
+      saiu_entrega: 0,
+      entregue: 0,
+      cancelado: 0,
+    };
+    for (const o of rows) {
+      if (o.status in statusCounts) statusCounts[o.status] += 1;
+    }
+
+    const topProducts = [...prodMap.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const revenueYear = valid.reduce((s, o) => s + (Number(o.total) || 0), 0);
+    const ticketMedio = valid.length ? revenueYear / valid.length : 0;
+    const monthRevenue = monthlyRevenue[currentMonth];
+
+    // Melhor mês (maior faturamento no ano) — só se houver receita
+    let bestMonthIdx = -1;
+    for (let i = 0; i < 12; i++) {
+      if (monthlyRevenue[i] > 0 && (bestMonthIdx < 0 || monthlyRevenue[i] > monthlyRevenue[bestMonthIdx])) {
+        bestMonthIdx = i;
+      }
+    }
+    const melhorMes = bestMonthIdx >= 0 ? MONTH_NAMES[bestMonthIdx] : null;
+
+    // Horário de pico (hora com mais pedidos nos últimos 90 dias)
+    let peakHour = -1;
+    for (let h = 0; h < 24; h++) {
+      if (hourCount[h] > 0 && (peakHour < 0 || hourCount[h] > hourCount[peakHour])) {
+        peakHour = h;
+      }
+    }
+    const horarioPico =
+      peakHour >= 0 ? `${String(peakHour).padStart(2, "0")}h–${String((peakHour + 1) % 24).padStart(2, "0")}h` : null;
+
     return {
       todayCount: todayCount ?? 0,
       pendingCount: pendingCount ?? 0,
+      activeProducts: activeProducts ?? 0,
       monthRevenue,
+      weekdayRevenue,
+      monthlyRevenue,
+      topProducts,
+      statusCounts,
+      totalOrdersYear: rows.length,
+      ticketMedio,
+      produtoCampeao: topProducts[0]?.name ?? null,
+      melhorMes,
+      horarioPico,
+      hasData: rows.length > 0,
     };
   });

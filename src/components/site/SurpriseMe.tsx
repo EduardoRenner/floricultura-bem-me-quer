@@ -26,13 +26,13 @@ export function SurpriseMeSection({ products }: { products: Product[] }) {
   return (
     <section
       className="py-16"
-      style={{ background: "#243324" }}
+      style={{ background: "#29321A" }}
     >
       <div className="mx-auto max-w-3xl px-4 text-center">
         <div className="text-5xl">🎲</div>
         <h2
           className="mt-3 font-display text-3xl md:text-4xl"
-          style={{ color: "#C4A84F" }}
+          style={{ color: "#CBB275" }}
         >
           Não sabe o que escolher?
         </h2>
@@ -82,8 +82,8 @@ export function SurpriseMeButton({
     <>
       <style>{`
         @keyframes surpriseGlow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(196,168,79,0.4); }
-          50% { box-shadow: 0 0 0 14px rgba(196,168,79,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(203,178,117,0.4); }
+          50% { box-shadow: 0 0 0 14px rgba(203,178,117,0); }
         }
         @keyframes spinSlow { to { transform: rotate(360deg); } }
         @keyframes modalIn {
@@ -96,8 +96,8 @@ export function SurpriseMeButton({
         {withCategorySelect && variant === "primary" && (
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger
-              className="w-56 border-[#8B7A3A] bg-transparent text-[#F0EDD8]"
-              style={{ borderColor: "#8B7A3A" }}
+              className="w-56 border-[#94833F] bg-transparent text-[#F0EDD8]"
+              style={{ borderColor: "#94833F" }}
             >
               <SelectValue />
             </SelectTrigger>
@@ -118,8 +118,8 @@ export function SurpriseMeButton({
           style={
             variant === "pill"
               ? {
-                  border: "1px solid #C4A84F",
-                  color: "#C4A84F",
+                  border: "1px solid #CBB275",
+                  color: "#CBB275",
                   background: "transparent",
                   padding: "6px 14px",
                   borderRadius: 50,
@@ -127,8 +127,8 @@ export function SurpriseMeButton({
                   cursor: "pointer",
                 }
               : {
-                  background: "#8B7A3A",
-                  color: "#1A2B1A",
+                  background: "#94833F",
+                  color: "#1D2A15",
                   fontWeight: 700,
                   padding: "16px 48px",
                   borderRadius: 50,
@@ -141,11 +141,11 @@ export function SurpriseMeButton({
           }
           onMouseEnter={(e) => {
             if (variant === "primary")
-              (e.currentTarget as HTMLButtonElement).style.background = "#C4A84F";
+              (e.currentTarget as HTMLButtonElement).style.background = "#CBB275";
           }}
           onMouseLeave={(e) => {
             if (variant === "primary")
-              (e.currentTarget as HTMLButtonElement).style.background = "#8B7A3A";
+              (e.currentTarget as HTMLButtonElement).style.background = "#94833F";
           }}
         >
           {loading ? (
@@ -178,8 +178,8 @@ export function SurpriseMeButton({
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-md rounded-lg p-8 text-center"
             style={{
-              background: "#1E2E1E",
-              border: "2px solid #C4A84F",
+              background: "#222D17",
+              border: "2px solid #CBB275",
               boxShadow: "0 4px 30px rgba(0,0,0,0.6)",
               animation: "modalIn 0.3s ease-out",
             }}
@@ -187,14 +187,14 @@ export function SurpriseMeButton({
             <button
               onClick={() => setOpen(false)}
               aria-label="Fechar"
-              className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-[#F0EDD8] hover:bg-[#243324]"
+              className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-[#F0EDD8] hover:bg-[#29321A]"
             >
               <X className="h-4 w-4" />
             </button>
             <div className="text-6xl">🌸</div>
             <h3
               className="mt-3 font-display text-2xl"
-              style={{ color: "#C4A84F" }}
+              style={{ color: "#CBB275" }}
             >
               {picked.name}
             </h3>
@@ -205,7 +205,7 @@ export function SurpriseMeButton({
             )}
             <div
               className="mt-3 font-display text-2xl font-bold"
-              style={{ color: "#C4A84F" }}
+              style={{ color: "#CBB275" }}
             >
               {formatBRL(Number(picked.price))}
             </div>
@@ -227,7 +227,7 @@ export function SurpriseMeButton({
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 border-[#C4A84F] text-[#C4A84F]"
+                className="flex-1 border-[#CBB275] text-[#CBB275]"
                 onClick={() => run(picked.id)}
               >
                 🎲 Tentar outra vez

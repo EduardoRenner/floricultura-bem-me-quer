@@ -95,7 +95,7 @@ function OccasionsPage() {
           <div className="text-xs uppercase tracking-widest text-accent">Ocasiões</div>
           <h1
             className="mt-2 font-display text-3xl md:text-5xl"
-            style={{ color: "#C4A84F" }}
+            style={{ color: "#CBB275" }}
           >
             Escolha a Ocasião Perfeita
           </h1>
@@ -103,7 +103,7 @@ function OccasionsPage() {
             Cada momento merece flores especiais. Selecione uma ocasião para ver nossas
             sugestões.
           </p>
-          <nav className="mt-6 text-xs" style={{ color: "#9E9E7A" }}>
+          <nav className="mt-6 text-xs" style={{ color: "#A5A17E" }}>
             <Link to="/" className="hover:text-accent">
               Início
             </Link>
@@ -114,7 +114,7 @@ function OccasionsPage() {
             {occasion && (
               <>
                 <span className="mx-2">›</span>
-                <span style={{ color: "#C4A84F" }}>{occasion.name}</span>
+                <span style={{ color: "#CBB275" }}>{occasion.name}</span>
               </>
             )}
           </nav>
@@ -131,9 +131,9 @@ function OccasionsPage() {
                 onClick={() => setOccasion(active ? null : o.id)}
                 className="rounded-xl p-5 text-center transition-all hover:-translate-y-0.5"
                 style={{
-                  background: active ? "#8B7A3A" : "#1E2E1E",
-                  border: `1px solid ${active ? "#C4A84F" : "#3A4A3A"}`,
-                  color: active ? "#1A2B1A" : "#F0EDD8",
+                  background: active ? "#94833F" : "#222D17",
+                  border: `1px solid ${active ? "#CBB275" : "#3E4A2C"}`,
+                  color: active ? "#1D2A15" : "#F0EDD8",
                   cursor: "pointer",
                 }}
               >
@@ -141,7 +141,7 @@ function OccasionsPage() {
                 <div className="mt-2 font-display text-base">{o.name}</div>
                 <p
                   className="mt-1 line-clamp-2 text-xs"
-                  style={{ color: active ? "#1A2B1A" : "#9E9E7A" }}
+                  style={{ color: active ? "#1D2A15" : "#A5A17E" }}
                 >
                   {o.description}
                 </p>
@@ -154,7 +154,7 @@ function OccasionsPage() {
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <h2
           className="mb-6 font-display text-2xl md:text-3xl"
-          style={{ color: "#C4A84F" }}
+          style={{ color: "#CBB275" }}
         >
           {occasion ? `Sugestões para ${occasion.name}` : "Todos os produtos"}
         </h2>
@@ -180,8 +180,8 @@ function OccasionsPage() {
                     <span
                       className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold"
                       style={{
-                        background: "#C4A84F",
-                        color: "#1A2B1A",
+                        background: "#CBB275",
+                        color: "#1D2A15",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
                       }}
                     >

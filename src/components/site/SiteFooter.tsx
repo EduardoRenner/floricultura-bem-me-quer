@@ -11,16 +11,18 @@ import {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t" style={{ background: "#111A11", borderTopColor: "#3A4A3A" }}>
+    <footer className="mt-24 border-t" style={{ background: "#14180C", borderTopColor: "#3E4A2C" }}>
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-3">
-            <span
-              className="grid h-10 w-10 place-items-center rounded-full font-display text-[14px] font-bold text-accent"
-              style={{ background: "#1A2B1A", border: "2px solid #C4A84F", letterSpacing: "0.05em" }}
-            >
-              BMQ
-            </span>
+            <img
+              src="/logo-bmq.jpg"
+              alt="Floricultura Bem Me Quer"
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 rounded-full object-cover"
+              style={{ border: "2px solid #CBB275" }}
+            />
             <div>
               <div className="font-display text-[18px] uppercase tracking-[0.15em] text-accent">Bem Me Quer</div>
               <div className="text-xs uppercase tracking-widest text-muted-foreground">

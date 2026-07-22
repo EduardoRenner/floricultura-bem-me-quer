@@ -138,6 +138,10 @@ export type Database = {
         Returns: undefined
       }
       verify_admin_password: { Args: { _password: string }; Returns: boolean }
+      verify_admin_login: {
+        Args: { _password: string; _ip: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

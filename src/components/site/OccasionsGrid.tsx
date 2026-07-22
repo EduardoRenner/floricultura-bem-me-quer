@@ -14,7 +14,7 @@ export function OccasionsHomeSection() {
         <div className="text-xs uppercase tracking-widest text-accent">Ocasiões</div>
         <h2
           className="mt-2 font-display text-3xl md:text-4xl"
-          style={{ color: "#C4A84F" }}
+          style={{ color: "#CBB275" }}
         >
           Qual é a ocasião?
         </h2>
@@ -30,18 +30,18 @@ export function OccasionsHomeSection() {
             search={{ filter: o.id }}
             className="group block rounded-xl p-6 text-center transition-all hover:-translate-y-0.5"
             style={{
-              background: "#1E2E1E",
-              border: "1px solid #3A4A3A",
+              background: "#222D17",
+              border: "1px solid #3E4A2C",
               opacity: 0,
               animation: `occFadeUp 0.4s ease-out ${i * 0.08}s forwards`,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#C4A84F";
-              e.currentTarget.style.background = "#243324";
+              e.currentTarget.style.borderColor = "#CBB275";
+              e.currentTarget.style.background = "#29321A";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#3A4A3A";
-              e.currentTarget.style.background = "#1E2E1E";
+              e.currentTarget.style.borderColor = "#3E4A2C";
+              e.currentTarget.style.background = "#222D17";
             }}
           >
             <div className="text-5xl">{o.emoji}</div>
@@ -53,7 +53,7 @@ export function OccasionsHomeSection() {
             </div>
             <p
               className="mt-1 line-clamp-2 text-xs"
-              style={{ color: "#9E9E7A" }}
+              style={{ color: "#A5A17E" }}
             >
               {o.description}
             </p>

@@ -17,7 +17,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   return (
     <article className="card-hover group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
-      <div className="aspect-[4/5] overflow-hidden" style={{ background: "#172217" }}>
+      <div className="aspect-[4/5] overflow-hidden" style={{ background: "#1A2011" }}>
         {product.image_url ? (
           <img
             src={product.image_url}

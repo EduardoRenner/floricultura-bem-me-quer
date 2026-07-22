@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const BRAND = "Floricultura Bem Me Quer";
-const PETAL_COLORS = ["#C4A84F", "#8B7A3A", "#F0EDD8"];
+const PETAL_COLORS = ["#CBB275", "#94833F", "#F0EDD8"];
 
 export function CinematicIntro() {
   const [visible, setVisible] = useState<boolean | null>(null);
@@ -70,7 +70,7 @@ export function CinematicIntro() {
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "#111A11",
+        background: "#14180C",
         opacity: fadingOut ? 0 : 1,
         transition: "opacity 0.5s ease-out",
         display: "flex",
@@ -103,31 +103,27 @@ export function CinematicIntro() {
 
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{petals}</div>
 
-      <div
+      <img
+        src="/logo-bmq.jpg"
+        alt="Floricultura Bem Me Quer"
+        width={96}
+        height={96}
         style={{
           width: 96,
           height: 96,
           borderRadius: "50%",
-          background: "#1A2B1A",
-          border: "3px solid #C4A84F",
-          display: "grid",
-          placeItems: "center",
-          fontFamily: "'Playfair Display', serif",
-          fontWeight: 700,
-          color: "#C4A84F",
-          letterSpacing: "0.05em",
+          objectFit: "cover",
+          border: "3px solid #CBB275",
           animation: "introLogoIn 0.6s ease-out both",
-          boxShadow: "0 4px 30px rgba(196,168,79,0.3)",
+          boxShadow: "0 4px 30px rgba(203,178,117,0.3)",
         }}
-      >
-        BMQ
-      </div>
+      />
 
       <h1
         style={{
           marginTop: 24,
           fontFamily: "'Playfair Display', serif",
-          color: "#C4A84F",
+          color: "#CBB275",
           fontSize: "clamp(1.8rem, 5vw, 3rem)",
           letterSpacing: "0.02em",
           display: "flex",
@@ -170,8 +166,8 @@ export function CinematicIntro() {
           bottom: 20,
           right: 20,
           background: "transparent",
-          border: "1px solid #3A4A3A",
-          color: "#9E9E7A",
+          border: "1px solid #3E4A2C",
+          color: "#A5A17E",
           fontSize: "0.75rem",
           padding: "6px 12px",
           borderRadius: 20,

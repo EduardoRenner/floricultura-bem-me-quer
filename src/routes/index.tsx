@@ -9,6 +9,8 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { ProductCard, type Product } from "@/components/site/ProductCard";
 import { SurpriseMeSection, SurpriseMeButton } from "@/components/site/SurpriseMe";
 import { OccasionsHomeSection } from "@/components/site/OccasionsGrid";
+import { PetalField } from "@/components/site/PetalField";
+import { Reveal } from "@/components/site/Reveal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,6 +79,7 @@ function Home() {
           aria-hidden
         />
         <div className="floral-pattern absolute inset-0" aria-hidden />
+        <PetalField count={14} />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-24 text-center md:py-32">
           <span className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-xs uppercase tracking-widest text-accent backdrop-blur-sm">
             <Flower2 className="h-3.5 w-3.5" /> Maravilha · Santa Catarina
@@ -119,7 +122,7 @@ function Home() {
       {/* SOBRE */}
       <section id="sobre" className="mx-auto max-w-6xl px-4 py-20">
         <div className="grid gap-10 md:grid-cols-2 md:items-center">
-          <div>
+          <Reveal>
             <div className="text-xs uppercase tracking-widest text-accent">Sobre nós</div>
             <h2 className="mt-2 font-display text-3xl md:text-4xl">Feito com carinho, em Maravilha</h2>
             <p className="mt-4 text-muted-foreground">
@@ -127,7 +130,7 @@ function Home() {
               flores e pelo cuidado com as pessoas. Aqui você encontra arranjos feitos com carinho para
               tornar cada momento especial.
             </p>
-          </div>
+          </Reveal>
           <div className="grid grid-cols-3 gap-3">
             {[
               { icon: Flower2, title: "Variedade" },
@@ -152,11 +155,13 @@ function Home() {
       <section id="produtos" className="relative bg-secondary/25 py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mb-8 flex flex-col items-center gap-3 text-center">
-            <div className="text-xs uppercase tracking-widest text-accent">Nossos produtos</div>
-            <h2 className="font-display text-3xl md:text-4xl">Escolha o presente perfeito</h2>
-            <p className="max-w-xl text-muted-foreground">
-              Buquês, arranjos e plantas cuidadosamente selecionados para cada ocasião.
-            </p>
+            <Reveal>
+              <div className="text-xs uppercase tracking-widest text-accent">Nossos produtos</div>
+              <h2 className="font-display text-3xl md:text-4xl">Escolha o presente perfeito</h2>
+              <p className="mx-auto max-w-xl text-muted-foreground">
+                Buquês, arranjos e plantas cuidadosamente selecionados para cada ocasião.
+              </p>
+            </Reveal>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               {CATEGORIES.map((c) => (
                 <button
@@ -202,7 +207,7 @@ function Home() {
 
       {/* REVIEWS */}
       <section className="mx-auto max-w-6xl px-4 py-20">
-        <div className="mb-10 flex flex-col items-center text-center">
+        <Reveal className="mb-10 flex flex-col items-center text-center">
           <div className="text-xs uppercase tracking-widest text-accent">Avaliações</div>
           <h2 className="mt-2 font-display text-3xl md:text-4xl">O que nossos clientes dizem</h2>
           <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-secondary/60 px-4 py-1.5 text-sm text-foreground">
@@ -210,7 +215,7 @@ function Home() {
             <span className="font-semibold">4.5</span>
             <span className="text-muted-foreground">média em 42 avaliações</span>
           </div>
-        </div>
+        </Reveal>
         <div className="grid gap-6 md:grid-cols-3">
           {REVIEWS.map((r, i) => (
             <div
@@ -238,8 +243,10 @@ function Home() {
       <section id="horarios" className="bg-secondary/25 py-20">
         <div className="mx-auto max-w-4xl px-4">
           <div className="mb-8 text-center">
-            <div className="text-xs uppercase tracking-widest text-accent">Horários</div>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">Estamos aqui para você</h2>
+            <Reveal>
+              <div className="text-xs uppercase tracking-widest text-accent">Horários</div>
+              <h2 className="mt-2 font-display text-3xl md:text-4xl">Estamos aqui para você</h2>
+            </Reveal>
             <div className="mt-3">
               <span
                 className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium"
@@ -269,10 +276,10 @@ function Home() {
 
       {/* CONTATO */}
       <section id="contato" className="mx-auto max-w-6xl px-4 py-20">
-        <div className="mb-10 text-center">
+        <Reveal className="mb-10 text-center">
           <div className="text-xs uppercase tracking-widest text-accent">Contato & Localização</div>
           <h2 className="mt-2 font-display text-3xl md:text-4xl">Venha nos visitar</h2>
-        </div>
+        </Reveal>
         <div className="grid gap-8 md:grid-cols-2">
           <div className="overflow-hidden rounded-2xl border border-border/60 shadow-sm">
             <iframe
