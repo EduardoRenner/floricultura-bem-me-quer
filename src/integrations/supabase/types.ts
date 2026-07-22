@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_login_attempts: {
+        Row: {
+          created_at: string
+          id: number
+          succeeded: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          succeeded: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          succeeded?: boolean
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -138,10 +156,6 @@ export type Database = {
         Returns: undefined
       }
       verify_admin_password: { Args: { _password: string }; Returns: boolean }
-      verify_admin_login: {
-        Args: { _password: string; _ip: string }
-        Returns: string
-      }
     }
     Enums: {
       [_ in never]: never
