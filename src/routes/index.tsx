@@ -81,7 +81,7 @@ function Home() {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(17,20,10,0.62) 0%, rgba(29,42,21,0.82) 100%)",
+              "linear-gradient(180deg, rgba(17,20,10,0.55) 0%, rgba(29,42,21,0.72) 50%, #29321A 100%)",
           }}
           aria-hidden
         />

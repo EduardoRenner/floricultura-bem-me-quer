@@ -26,7 +26,7 @@ export function SurpriseMeSection({ products }: { products: Product[] }) {
   return (
     <section
       className="py-16"
-      style={{ background: "#29321A" }}
+      style={{ background: "linear-gradient(180deg, #29321A 0%, #1D2A15 100%)" }}
     >
       <div className="mx-auto max-w-3xl px-4 text-center">
         <div className="text-5xl">🎲</div>
