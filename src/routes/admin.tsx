@@ -56,6 +56,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/shop";
+import { OCCASIONS } from "@/lib/occasions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -441,6 +442,7 @@ type AdminProduct = {
   category: string;
   image_url: string | null;
   active: boolean;
+  occasions: string[];
 };
 
 function ProductsTab({ password }: { password: string }) {
@@ -504,6 +506,7 @@ function ProductsTab({ password }: { password: string }) {
             category: p.category,
             image_url: p.image_url,
             active: p.active,
+            occasions: p.occasions ?? [],
           },
         },
       }),
@@ -542,6 +545,7 @@ function ProductsTab({ password }: { password: string }) {
               category: "Arranjos",
               image_url: "",
               active: true,
+              occasions: [],
             });
             setOpen(true);
           }}
@@ -668,6 +672,39 @@ function ProductsTab({ password }: { password: string }) {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <Label>Ocasiões (onde este produto aparece)</Label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {OCCASIONS.map((o) => {
+                    const on = (editing.occasions ?? []).includes(o.id);
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() =>
+                          setEditing({
+                            ...editing,
+                            occasions: on
+                              ? (editing.occasions ?? []).filter((x) => x !== o.id)
+                              : [...(editing.occasions ?? []), o.id],
+                          })
+                        }
+                        className={
+                          "rounded-full border px-3 py-1 text-xs transition " +
+                          (on
+                            ? "border-accent bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-accent hover:text-accent")
+                        }
+                      >
+                        {o.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Deixe em branco para não exibir em nenhuma ocasião específica.
+                </p>
               </div>
               <div>
                 <Label>Imagem do produto</Label>

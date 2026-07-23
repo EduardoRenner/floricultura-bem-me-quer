@@ -101,6 +101,7 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
         category: string;
         image_url?: string | null;
         active: boolean;
+        occasions?: string[];
       };
     }) => data,
   )
@@ -117,6 +118,7 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
           category: p.category,
           image_url: p.image_url ?? null,
           active: p.active,
+          occasions: p.occasions ?? [],
         })
         .eq("id", p.id);
       if (error) throw new Error(error.message);
@@ -128,6 +130,7 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
         category: p.category,
         image_url: p.image_url ?? null,
         active: p.active,
+        occasions: p.occasions ?? [],
       });
       if (error) throw new Error(error.message);
     }

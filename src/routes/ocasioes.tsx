@@ -64,13 +64,10 @@ function OccasionsPage() {
   const filtered = useMemo(() => {
     if (!products) return [];
     if (!occasion) return products;
+    // "Só porque sim" é o catch-all: mostra tudo, embaralhado.
     if (occasion.id === "soporque") return shuffle(products);
-    let list = products.filter((p) => occasion.categories.includes(p.category));
-    if (occasion.nameContains) {
-      list = list.filter((p) =>
-        p.name.toLowerCase().includes(occasion.nameContains!.toLowerCase()),
-      );
-    }
+    // Demais ocasiões: só os produtos marcados para ela no admin.
+    let list = products.filter((p) => (p.occasions ?? []).includes(occasion.id));
     // highlight sort
     if (occasion.highlightName) {
       list = [...list].sort((a, b) => {
@@ -170,7 +167,7 @@ function OccasionsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-center text-muted-foreground">
-            Nenhum produto encontrado para esta ocasião.
+            Ainda não há produtos selecionados para esta ocasião.
           </p>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

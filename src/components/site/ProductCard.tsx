@@ -11,6 +11,7 @@ export type Product = {
   price: number;
   category: string;
   image_url: string | null;
+  occasions?: string[] | null;
 };
 
 export function ProductCard({ product }: { product: Product }) {
