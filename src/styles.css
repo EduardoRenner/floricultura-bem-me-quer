@@ -180,6 +180,21 @@
   transform: scaleX(1);
 }
 
+/* Fade ao trocar de avaliação no carrossel */
+.review-fade {
+  animation: reviewFade 0.35s ease-out both;
+}
+@keyframes reviewFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Respeito total a quem prefere menos movimento:
    desliga pétalas, reveals, hovers com transform e scroll suave. */
 @media (prefers-reduced-motion: reduce) {

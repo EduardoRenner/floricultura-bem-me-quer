@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import {
   Accessibility,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Flower2,
   Heart,
@@ -43,18 +45,30 @@ export const Route = createFileRoute("/")({ component: Home });
 
 const CATEGORIES = ["Todos", "Rosas", "Arranjos", "Presentes", "Plantas"];
 
+// Avaliações reais dos clientes (Google). Média 4,5 em 42 avaliações.
 const REVIEWS = [
   {
-    text: "Ótimas opções para presentear pessoas especiais.",
-    author: "Cliente satisfeito",
+    text: "A melhor floricultura da cidade. Atendimento de primeira. Recomendo!",
+    author: "Felipe Waldow",
     stars: 5,
   },
   {
-    text: "A melhor floricultura da cidade. Atendimento de primeira. Recomendo!",
-    author: "Cliente fiel",
+    text: "Sou de Cascavel, PR. Solicitei um atendimento para presentear uma pessoa na cidade e fui atendida com muita agilidade. O produto foi embalado com muito cuidado.",
+    author: "Cliente de Cascavel, PR",
     stars: 5,
   },
-  { text: "Uma boa floricultura", author: "Cliente", stars: 4 },
+  {
+    text: "Ótimas opções para presentear pessoas especiais.",
+    author: "Marcia Furst",
+    stars: 5,
+  },
+  { text: "Ótimo atendimento.", author: "Zirlene A. Milan Tarso", stars: 5 },
+  { text: "Bons produtos.", author: "Mateus Back", stars: 5 },
+  { text: "Lindo lugar.", author: "Lili Gabardo", stars: 5 },
+  { text: "Amei!", author: "Volmir Gerelli", stars: 5 },
+  { text: "Ótimo atendimento.", author: "Luan Dal Savio", stars: 5 },
+  { text: "Uma boa floricultura.", author: "Gessi Rezende", stars: 4 },
+  { text: "Gostei.", author: "Francielli Gielow", stars: 4 },
 ];
 
 function Home() {
@@ -222,31 +236,11 @@ function Home() {
           <h2 className="mt-2 font-display text-3xl md:text-4xl">O que nossos clientes dizem</h2>
           <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-secondary/60 px-4 py-1.5 text-sm text-foreground">
             <Star className="h-4 w-4 fill-primary text-primary" />
-            <span className="font-semibold">4.5</span>
-            <span className="text-muted-foreground">média em 42 avaliações</span>
+            <span className="font-semibold">4,5</span>
+            <span className="text-muted-foreground">média em 42 avaliações no Google</span>
           </div>
         </Reveal>
-        <div className="grid gap-6 md:grid-cols-3">
-          {REVIEWS.map((r, i) => (
-            <div
-              key={i}
-              className="card-hover rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:-translate-y-1"
-            >
-              <div className="flex gap-0.5">
-                {Array.from({ length: 5 }).map((_, s) => (
-                  <Star
-                    key={s}
-                    className={
-                      "h-4 w-4 " + (s < r.stars ? "fill-primary text-primary" : "text-muted-foreground/40")
-                    }
-                  />
-                ))}
-              </div>
-              <p className="mt-4 text-foreground/90">"{r.text}"</p>
-              <p className="mt-3 text-sm text-muted-foreground">— {r.author}</p>
-            </div>
-          ))}
-        </div>
+        <ReviewsCarousel />
       </section>
 
       {/* HORARIOS */}
@@ -323,6 +317,72 @@ function Home() {
       </section>
 
       <SiteFooter />
+    </div>
+  );
+}
+
+function ReviewsCarousel() {
+  const [index, setIndex] = useState(0);
+  const count = REVIEWS.length;
+  const go = (dir: number) => setIndex((v) => (v + dir + count) % count);
+  const r = REVIEWS[index];
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <button
+          type="button"
+          onClick={() => go(-1)}
+          aria-label="Avaliação anterior"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:border-accent hover:text-accent"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+
+        <div
+          key={index}
+          className="review-fade min-h-[210px] flex-1 rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm"
+        >
+          <div className="flex justify-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, s) => (
+              <Star
+                key={s}
+                className={
+                  "h-4 w-4 " +
+                  (s < r.stars ? "fill-primary text-primary" : "text-muted-foreground/40")
+                }
+              />
+            ))}
+          </div>
+          <p className="mt-5 text-lg leading-relaxed text-foreground/90">“{r.text}”</p>
+          <p className="mt-5 text-sm font-medium text-accent">{r.author}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => go(1)}
+          aria-label="Próxima avaliação"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:border-accent hover:text-accent"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {REVIEWS.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setIndex(i)}
+            aria-label={`Ir para avaliação ${i + 1}`}
+            className="h-2 rounded-full transition-all"
+            style={{
+              width: i === index ? 22 : 8,
+              background: i === index ? "var(--color-accent)" : "var(--color-border)",
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
