@@ -517,6 +517,7 @@ function ProductsTab({ password }: { password: string }) {
       setEditing(null);
       toast.success("Produto salvo");
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar produto"),
   });
 
   const remove = useMutation({

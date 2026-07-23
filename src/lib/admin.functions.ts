@@ -108,32 +108,29 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
     const p = data.product;
-    if (p.id) {
-      const { error } = await admin
-        .from("products")
-        .update({
-          name: p.name,
-          description: p.description ?? null,
-          price: p.price,
-          category: p.category,
-          image_url: p.image_url ?? null,
-          active: p.active,
-          occasions: p.occasions ?? [],
-        })
-        .eq("id", p.id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await admin.from("products").insert({
-        name: p.name,
-        description: p.description ?? null,
-        price: p.price,
-        category: p.category,
-        image_url: p.image_url ?? null,
-        active: p.active,
-        occasions: p.occasions ?? [],
-      });
-      if (error) throw new Error(error.message);
+
+    const base = {
+      name: p.name,
+      description: p.description ?? null,
+      price: p.price,
+      category: p.category,
+      image_url: p.image_url ?? null,
+      active: p.active,
+    };
+    const withOccasions = { ...base, occasions: p.occasions ?? [] };
+
+    const run = (payload: typeof withOccasions | typeof base) =>
+      p.id
+        ? admin.from("products").update(payload).eq("id", p.id)
+        : admin.from("products").insert(payload);
+
+    let { error } = await run(withOccasions);
+    // Se a coluna `occasions` ainda não existe no banco (migration não aplicada),
+    // salva o produto sem ela — assim o cadastro nunca fica travado.
+    if (error && (error.code === "42703" || /occasions/i.test(error.message))) {
+      ({ error } = await run(base));
     }
+    if (error) throw new Error(error.message);
     return { ok: true as const };
   });
 
