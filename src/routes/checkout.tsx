@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useServerFn } from "@tanstack/react-start";
 import { useCart } from "@/lib/cart";
-import { ADDRESS, formatBRL } from "@/lib/shop";
+import { ADDRESS, formatBRL, WHATSAPP_URL } from "@/lib/shop";
 import { createOrder } from "@/lib/order.functions";
 
 // Converte a data do input (YYYY-MM-DD) para o formato brasileiro DD/MM/AAAA.
@@ -184,7 +184,7 @@ function CheckoutPage() {
       .filter((l) => l !== "")
       .join("\n");
 
-    const whatsappUrl = `https://wa.me/554999273376?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`;
 
     try { clear(); } catch { /* noop */ }
     toast.success("Pedido registrado! Abrindo o WhatsApp…");

@@ -1,4 +1,6 @@
-export const WHATSAPP_URL = "https://wa.me/554936640169";
+// WhatsApp: celular (49) 99927-3376 — número que efetivamente recebe mensagens.
+export const WHATSAPP_URL = "https://wa.me/554999273376";
+// Telefone fixo para ligações (não tem WhatsApp).
 export const PHONE_TEL = "tel:+554936640169";
 export const PHONE_DISPLAY = "(49) 3664-0169";
 export const FACEBOOK_URL = "https://www.facebook.com/floriculturabmq/";

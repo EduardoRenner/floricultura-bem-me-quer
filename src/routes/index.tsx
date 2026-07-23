@@ -9,6 +9,7 @@ import {
   Flower2,
   Heart,
   MapPin,
+  MessageCircle,
   Phone,
   Sparkles,
   Star,
@@ -327,20 +328,35 @@ function Home() {
 }
 
 function ContactForm() {
-  const [sending, setSending] = useState(false);
   return (
     <form
       className="space-y-4 rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
       onSubmit={(e) => {
         e.preventDefault();
-        setSending(true);
-        setTimeout(() => {
-          setSending(false);
-          toast.success("Mensagem enviada!", {
-            description: "Retornaremos em breve. Obrigado pelo contato.",
-          });
-          (e.target as HTMLFormElement).reset();
-        }, 700);
+        const form = e.currentTarget;
+        const fd = new FormData(form);
+        const name = String(fd.get("name") ?? "").trim();
+        const email = String(fd.get("email") ?? "").trim();
+        const message = String(fd.get("message") ?? "").trim();
+        if (!name || !message) {
+          toast.error("Preencha nome e mensagem.");
+          return;
+        }
+        // Envia a mensagem pelo WhatsApp (mesmo número dos pedidos)
+        const text = [
+          "*Contato pelo site — Floricultura Bem Me Quer*",
+          "",
+          `*Nome:* ${name}`,
+          email ? `*E-mail:* ${email}` : "",
+          "",
+          "*Mensagem:*",
+          message,
+        ]
+          .filter((l) => l !== "")
+          .join("\n");
+        window.open(`${WHATSAPP_URL}?text=${encodeURIComponent(text)}`, "_blank");
+        toast.success("Abrindo o WhatsApp para enviar sua mensagem…");
+        form.reset();
       }}
     >
       <h3 className="font-display text-xl">Envie uma mensagem</h3>
@@ -350,14 +366,14 @@ function ContactForm() {
       </div>
       <div>
         <label className="mb-1 block text-sm">E-mail</label>
-        <Input required type="email" name="email" placeholder="voce@email.com" />
+        <Input type="email" name="email" placeholder="voce@email.com" />
       </div>
       <div>
         <label className="mb-1 block text-sm">Mensagem</label>
         <Textarea required name="message" rows={4} placeholder="Como podemos te ajudar?" />
       </div>
-      <Button type="submit" className="w-full" disabled={sending}>
-        {sending ? "Enviando…" : "Enviar mensagem"}
+      <Button type="submit" className="w-full">
+        <MessageCircle className="mr-2 h-4 w-4" /> Enviar pelo WhatsApp
       </Button>
     </form>
   );
