@@ -1,8 +1,7 @@
-// WhatsApp: celular (49) 99927-3376 — número que efetivamente recebe mensagens.
+// Contato único do site: celular (49) 99927-3376 — recebe ligação e WhatsApp.
 export const WHATSAPP_URL = "https://wa.me/554999273376";
-// Telefone fixo para ligações (não tem WhatsApp).
-export const PHONE_TEL = "tel:+554936640169";
-export const PHONE_DISPLAY = "(49) 3664-0169";
+export const PHONE_TEL = "tel:+554999273376";
+export const PHONE_DISPLAY = "(49) 99927-3376";
 export const FACEBOOK_URL = "https://www.facebook.com/floriculturabmq/";
 export const INSTAGRAM_URL = "https://www.instagram.com/_bem_me_quer_floricultura/";
 export const ADDRESS = "Av. Anita Garibaldi, 266 - Centro, Maravilha - SC, 89874-000";
