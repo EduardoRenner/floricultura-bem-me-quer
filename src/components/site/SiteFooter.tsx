@@ -18,10 +18,9 @@ export function SiteFooter() {
             <img
               src="/logo-bmq.png"
               alt="Floricultura Bem Me Quer"
-              width={56}
-              height={56}
-              className="h-14 w-14 shrink-0 rounded-full object-cover"
-              style={{ border: "2px solid #CBB275" }}
+              width={64}
+              height={64}
+              className="h-16 w-16 shrink-0 rounded-full object-cover"
             />
             <div>
               <div className="font-display text-[18px] uppercase tracking-[0.15em] text-accent">Bem Me Quer</div>

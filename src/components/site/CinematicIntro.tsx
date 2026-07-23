@@ -106,14 +106,13 @@ export function CinematicIntro() {
       <img
         src="/logo-bmq.png"
         alt="Floricultura Bem Me Quer"
-        width={140}
-        height={140}
+        width={168}
+        height={168}
         style={{
-          width: 140,
-          height: 140,
+          width: 168,
+          height: 168,
           borderRadius: "50%",
           objectFit: "cover",
-          border: "3px solid #CBB275",
           animation: "introLogoIn 0.6s ease-out both",
           boxShadow: "0 4px 30px rgba(203,178,117,0.3)",
         }}

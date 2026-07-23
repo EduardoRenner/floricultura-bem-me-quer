@@ -24,10 +24,9 @@ export function SiteHeader() {
           <img
             src="/logo-bmq.png"
             alt="Floricultura Bem Me Quer"
-            width={48}
-            height={48}
-            className="h-12 w-12 shrink-0 rounded-full object-cover"
-            style={{ border: "2px solid #CBB275" }}
+            width={56}
+            height={56}
+            className="h-14 w-14 shrink-0 rounded-full object-cover"
           />
           <div className="leading-tight">
             <div className="font-display text-[18px] uppercase tracking-[0.15em] text-accent">

@@ -90,10 +90,9 @@ function AdminPage() {
             <img
               src="/logo-bmq.png"
               alt="Bem Me Quer"
-              width={44}
-              height={44}
-              className="h-11 w-11 shrink-0 rounded-full object-cover"
-              style={{ border: "2px solid #CBB275" }}
+              width={48}
+              height={48}
+              className="h-12 w-12 shrink-0 rounded-full object-cover"
             />
             <div>
               <div className="font-display text-accent">Bem Me Quer</div>
@@ -194,10 +193,9 @@ function LoginCard({ onLogin }: { onLogin: (p: string) => void }) {
           <img
             src="/logo-bmq.png"
             alt="Bem Me Quer"
-            width={72}
-            height={72}
-            className="mx-auto h-18 w-18 rounded-full object-cover"
-            style={{ border: "2px solid #CBB275" }}
+            width={88}
+            height={88}
+            className="mx-auto h-22 w-22 rounded-full object-cover"
           />
           <h1 className="mt-3 font-display text-2xl">Painel Admin</h1>
           <p className="text-sm text-muted-foreground">Floricultura Bem Me Quer</p>

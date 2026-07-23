@@ -11,6 +11,8 @@ import { SurpriseMeSection, SurpriseMeButton } from "@/components/site/SurpriseM
 import { OccasionsHomeSection } from "@/components/site/OccasionsGrid";
 import { PetalField } from "@/components/site/PetalField";
 import { Reveal } from "@/components/site/Reveal";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
+import { AsciiArt } from "@/components/ui/ascii-flower";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,14 +74,19 @@ function Home() {
       <SiteHeader />
 
       {/* HERO */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden" style={{ background: "var(--surface-deep)" }}>
+        {/* Fundo: flor em ASCII animada (auto-hospedada) + overlay para leitura */}
+        <AsciiArt className="absolute inset-0" />
         <div
           className="absolute inset-0"
-          style={{ background: "var(--gradient-hero)" }}
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(17,20,10,0.62) 0%, rgba(29,42,21,0.82) 100%)",
+          }}
           aria-hidden
         />
         <div className="floral-pattern absolute inset-0" aria-hidden />
-        <PetalField count={14} />
+        <PetalField count={10} />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-24 text-center md:py-32">
           <span className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-xs uppercase tracking-widest text-accent backdrop-blur-sm">
             <Flower2 className="h-3.5 w-3.5" /> Maravilha · Santa Catarina
@@ -162,21 +169,8 @@ function Home() {
                 Buquês, arranjos e plantas cuidadosamente selecionados para cada ocasião.
               </p>
             </Reveal>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className={
-                    "rounded-full border px-4 py-1.5 text-sm transition " +
-                    (category === c
-                      ? "border-accent bg-primary text-primary-foreground"
-                      : "border-border bg-transparent text-muted-foreground hover:border-accent hover:text-accent")
-                  }
-                >
-                  {c}
-                </button>
-              ))}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+              <AnimatedTabs tabs={CATEGORIES} active={category} onChange={setCategory} />
               <SurpriseMeButton
                 products={products ?? []}
                 variant="pill"
