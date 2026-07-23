@@ -1,3 +1,15 @@
+import {
+  Briefcase,
+  Cake,
+  Gem,
+  GraduationCap,
+  HandHeart,
+  Heart,
+  HeartPulse,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
+
 export type OccasionId =
   | "casamento"
   | "aniversario"
@@ -10,7 +22,7 @@ export type OccasionId =
 
 export type Occasion = {
   id: OccasionId;
-  emoji: string;
+  icon: LucideIcon;
   name: string;
   description: string;
   categories: string[]; // matching product categories
@@ -21,7 +33,7 @@ export type Occasion = {
 export const OCCASIONS: Occasion[] = [
   {
     id: "casamento",
-    emoji: "💍",
+    icon: Gem,
     name: "Casamento",
     description: "Arranjos e buquês para o dia mais especial",
     categories: ["Arranjos"],
@@ -29,42 +41,42 @@ export const OCCASIONS: Occasion[] = [
   },
   {
     id: "aniversario",
-    emoji: "🎂",
+    icon: Cake,
     name: "Aniversário",
     description: "Surpreenda quem você ama com flores",
     categories: ["Presentes", "Arranjos"],
   },
   {
     id: "namorados",
-    emoji: "💕",
+    icon: Heart,
     name: "Dia dos Namorados",
     description: "Declare seu amor com as flores certas",
     categories: ["Rosas", "Arranjos"],
   },
   {
     id: "recuperacao",
-    emoji: "🏥",
+    icon: HeartPulse,
     name: "Recuperação",
     description: "Flores que trazem alegria e esperança",
     categories: ["Plantas", "Arranjos"],
   },
   {
     id: "corporativo",
-    emoji: "💼",
+    icon: Briefcase,
     name: "Corporativo",
     description: "Presentes florais para clientes e parceiros",
     categories: ["Presentes", "Plantas"],
   },
   {
     id: "formatura",
-    emoji: "🎓",
+    icon: GraduationCap,
     name: "Formatura",
     description: "Celebre essa conquista com muito estilo",
     categories: ["Presentes", "Arranjos"],
   },
   {
     id: "luto",
-    emoji: "💔",
+    icon: HandHeart,
     name: "Luto e Condolências",
     description: "Demonstre seu carinho nos momentos difíceis",
     categories: ["Arranjos"],
@@ -72,7 +84,7 @@ export const OCCASIONS: Occasion[] = [
   },
   {
     id: "soporque",
-    emoji: "🌟",
+    icon: Sparkles,
     name: "Só porque sim",
     description: "Porque toda ocasião é uma boa ocasião",
     categories: [],

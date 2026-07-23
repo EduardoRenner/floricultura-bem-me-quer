@@ -2,7 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Flower2, Heart, MapPin, Phone, Sparkles, Star } from "lucide-react";
+import {
+  Accessibility,
+  CheckCircle2,
+  Clock,
+  Flower2,
+  Heart,
+  MapPin,
+  Phone,
+  Sparkles,
+  Star,
+  Truck,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -110,12 +121,16 @@ function Home() {
               </Button>
             </a>
           </div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-foreground/80">
-            <span className="inline-flex items-center gap-1">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-foreground/80">
+            <span className="inline-flex items-center gap-1.5">
               <Star className="h-4 w-4 fill-accent text-accent" /> 4.5/5 estrelas
             </span>
-            <span>· 📦 Entrega disponível</span>
-            <span>· ♿ Acessível</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Truck className="h-4 w-4 text-accent" /> Entrega disponível
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Accessibility className="h-4 w-4 text-accent" /> Acessível
+            </span>
           </div>
         </div>
       </section>
@@ -174,7 +189,7 @@ function Home() {
               <SurpriseMeButton
                 products={products ?? []}
                 variant="pill"
-                label="✨ Surpreenda-me"
+                label="Surpreenda-me"
               />
             </div>
           </div>

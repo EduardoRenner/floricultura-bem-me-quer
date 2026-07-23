@@ -137,7 +137,11 @@ function OccasionsPage() {
                   cursor: "pointer",
                 }}
               >
-                <div className="text-4xl">{o.emoji}</div>
+                <o.icon
+                  className="mx-auto h-8 w-8"
+                  strokeWidth={1.5}
+                  style={{ color: active ? "#1D2A15" : "#CBB275" }}
+                />
                 <div className="mt-2 font-display text-base">{o.name}</div>
                 <p
                   className="mt-1 line-clamp-2 text-xs"

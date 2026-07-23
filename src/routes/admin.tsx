@@ -4,16 +4,23 @@ import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Award,
+  CalendarDays,
+  Clock,
   Flower2,
   ImageUp,
+  Inbox,
   LayoutDashboard,
   Loader2,
   LogOut,
+  Package,
   Pencil,
   Plus,
   Settings as SettingsIcon,
   ShoppingBag,
   Trash2,
+  TrendingUp,
+  Wallet,
 } from "lucide-react";
 import {
   adminDeleteOrder,
@@ -878,9 +885,9 @@ const STATUS_META: { key: string; name: string; color: string }[] = [
 function NoData() {
   return (
     <div className="grid h-[260px] place-items-center text-center">
-      <div>
-        <div className="text-2xl">🌱</div>
-        <p className="mt-1 text-sm" style={{ color: "#A5A17E" }}>
+      <div className="flex flex-col items-center">
+        <Inbox className="h-7 w-7" strokeWidth={1.5} style={{ color: "#A5A17E" }} />
+        <p className="mt-2 text-sm" style={{ color: "#A5A17E" }}>
           Sem dados ainda
         </p>
       </div>
@@ -954,17 +961,17 @@ function ReportsDashboard({ live }: { live?: AdminStats }) {
   );
 
   const statCards = [
-    { icon: "📦", label: "Pedidos hoje", value: live.todayCount },
-    { icon: "⏳", label: "Pedidos pendentes", value: live.pendingCount },
-    { icon: "💰", label: "Faturamento este mês", value: formatBRL(live.monthRevenue) },
-    { icon: "🌸", label: "Produtos ativos", value: live.activeProducts },
+    { icon: Package, label: "Pedidos hoje", value: live.todayCount },
+    { icon: Clock, label: "Pedidos pendentes", value: live.pendingCount },
+    { icon: Wallet, label: "Faturamento este mês", value: formatBRL(live.monthRevenue) },
+    { icon: Flower2, label: "Produtos ativos", value: live.activeProducts },
   ];
 
   const summary = [
-    { icon: "📈", label: "Ticket médio", value: live.hasData ? formatBRL(live.ticketMedio) : "—" },
-    { icon: "🏆", label: "Produto campeão", value: live.produtoCampeao ?? "—" },
-    { icon: "⏰", label: "Horário de pico", value: live.horarioPico ?? "—" },
-    { icon: "📅", label: "Melhor mês", value: live.melhorMes ?? "—" },
+    { icon: TrendingUp, label: "Ticket médio", value: live.hasData ? formatBRL(live.ticketMedio) : "—" },
+    { icon: Award, label: "Produto campeão", value: live.produtoCampeao ?? "—" },
+    { icon: Clock, label: "Horário de pico", value: live.horarioPico ?? "—" },
+    { icon: CalendarDays, label: "Melhor mês", value: live.melhorMes ?? "—" },
   ];
 
   return (
@@ -988,7 +995,7 @@ function ReportsDashboard({ live }: { live?: AdminStats }) {
               boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
             }}
           >
-            <div className="text-2xl">{s.icon}</div>
+            <s.icon className="h-6 w-6" strokeWidth={1.5} style={{ color: "#CBB275" }} />
             <div className="mt-2 text-xs" style={{ color: "#A5A17E" }}>
               {s.label}
             </div>
@@ -1135,7 +1142,7 @@ function ReportsDashboard({ live }: { live?: AdminStats }) {
             className="rounded-lg p-4"
             style={{ background: "#222D17", border: "1px solid #3E4A2C" }}
           >
-            <div className="text-xl">{s.icon}</div>
+            <s.icon className="h-5 w-5" strokeWidth={1.5} style={{ color: "#CBB275" }} />
             <div className="mt-1 text-xs" style={{ color: "#A5A17E" }}>
               {s.label}
             </div>

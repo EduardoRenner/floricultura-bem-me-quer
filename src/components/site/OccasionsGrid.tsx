@@ -44,7 +44,11 @@ export function OccasionsHomeSection() {
               e.currentTarget.style.background = "#222D17";
             }}
           >
-            <div className="text-5xl">{o.emoji}</div>
+            <o.icon
+              className="mx-auto h-9 w-9 transition-colors group-hover:text-accent"
+              style={{ color: "#CBB275" }}
+              strokeWidth={1.5}
+            />
             <div
               className="mt-3 font-display text-lg"
               style={{ color: "#F0EDD8" }}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { Flower2, Loader2, RefreshCw, ShoppingBag, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -29,7 +29,7 @@ export function SurpriseMeSection({ products }: { products: Product[] }) {
       style={{ background: "linear-gradient(180deg, #29321A 0%, #1D2A15 100%)" }}
     >
       <div className="mx-auto max-w-3xl px-4 text-center">
-        <div className="text-5xl">🎲</div>
+        <Sparkles className="mx-auto h-9 w-9" strokeWidth={1.5} style={{ color: "#CBB275" }} />
         <h2
           className="mt-3 font-display text-3xl md:text-4xl"
           style={{ color: "#CBB275" }}
@@ -51,7 +51,7 @@ export function SurpriseMeButton({
   products,
   withCategorySelect = false,
   variant = "primary",
-  label = "✨ Surpreenda-me!",
+  label = "Surpreenda-me",
 }: {
   products: Product[];
   withCategorySelect?: boolean;
@@ -85,7 +85,6 @@ export function SurpriseMeButton({
           0%, 100% { box-shadow: 0 0 0 0 rgba(203,178,117,0.4); }
           50% { box-shadow: 0 0 0 14px rgba(203,178,117,0); }
         }
-        @keyframes spinSlow { to { transform: rotate(360deg); } }
         @keyframes modalIn {
           0% { opacity: 0; transform: scale(0.8); }
           100% { opacity: 1; transform: scale(1); }
@@ -150,14 +149,7 @@ export function SurpriseMeButton({
         >
           {loading ? (
             <span className="inline-flex items-center gap-2">
-              <span
-                style={{
-                  display: "inline-block",
-                  animation: "spinSlow 0.8s linear infinite",
-                }}
-              >
-                🌸
-              </span>
+              <Loader2 className="h-4 w-4 animate-spin" />
               Escolhendo para você...
             </span>
           ) : (
@@ -191,7 +183,20 @@ export function SurpriseMeButton({
             >
               <X className="h-4 w-4" />
             </button>
-            <div className="text-6xl">🌸</div>
+            {picked.image_url ? (
+              <img
+                src={picked.image_url}
+                alt={picked.name}
+                className="mx-auto h-36 w-36 rounded-lg object-cover"
+              />
+            ) : (
+              <div
+                className="mx-auto grid h-36 w-36 place-items-center rounded-lg"
+                style={{ background: "#29321A" }}
+              >
+                <Flower2 className="h-10 w-10" strokeWidth={1.5} style={{ color: "#CBB275" }} />
+              </div>
+            )}
             <h3
               className="mt-3 font-display text-2xl"
               style={{ color: "#CBB275" }}
@@ -219,18 +224,18 @@ export function SurpriseMeButton({
                     price: Number(picked.price),
                     image_url: picked.image_url,
                   });
-                  toast.success("Surpresa adicionada ao carrinho! 🌸");
+                  toast.success("Adicionado ao carrinho", { description: picked.name });
                   setOpen(false);
                 }}
               >
-                🛒 Adicionar ao Carrinho
+                <ShoppingBag className="mr-2 h-4 w-4" /> Adicionar ao carrinho
               </Button>
               <Button
                 variant="outline"
                 className="flex-1 border-[#CBB275] text-[#CBB275]"
                 onClick={() => run(picked.id)}
               >
-                🎲 Tentar outra vez
+                <RefreshCw className="mr-2 h-4 w-4" /> Tentar outra vez
               </Button>
             </div>
           </div>

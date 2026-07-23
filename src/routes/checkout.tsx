@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, MapPin } from "lucide-react";
+import { CheckCircle2, MapPin, MessageCircle, Store, Truck } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { Button } from "@/components/ui/button";
@@ -187,7 +187,7 @@ function CheckoutPage() {
     const whatsappUrl = `https://wa.me/554999273376?text=${encodeURIComponent(message)}`;
 
     try { clear(); } catch { /* noop */ }
-    toast.success("Pedido registrado! Abrindo o WhatsApp… 🌸");
+    toast.success("Pedido registrado! Abrindo o WhatsApp…");
 
     if (waWindow) {
       waWindow.location.href = whatsappUrl;
@@ -245,7 +245,9 @@ function CheckoutPage() {
                 >
                   <RadioGroupItem value="delivery" className="mt-1" />
                   <div>
-                    <div className="font-medium">🏠 Entrega</div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Truck className="h-4 w-4" /> Entrega
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Taxa: {formatBRL(deliveryFee)}
                     </div>
@@ -259,7 +261,9 @@ function CheckoutPage() {
                 >
                   <RadioGroupItem value="pickup" className="mt-1" />
                   <div>
-                    <div className="font-medium">🏪 Retirada na loja</div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Store className="h-4 w-4" /> Retirada na loja
+                    </div>
                     <div className="text-sm text-muted-foreground">Sem taxa adicional</div>
                   </div>
                 </label>
@@ -340,7 +344,13 @@ function CheckoutPage() {
             </section>
 
             <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-              {submitting ? "Preparando pedido…" : "Finalizar pelo WhatsApp 💬"}
+              {submitting ? (
+                "Preparando pedido…"
+              ) : (
+                <>
+                  <MessageCircle className="mr-2 h-4 w-4" /> Finalizar pelo WhatsApp
+                </>
+              )}
             </Button>
           </form>
 
