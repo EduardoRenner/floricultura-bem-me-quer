@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import {
+  adminDeleteOrder,
   adminDeleteProduct,
   adminListOrders,
   adminListProducts,
@@ -87,11 +88,11 @@ function AdminPage() {
         <aside className="hidden w-60 shrink-0 border-r border-border bg-card p-4 md:block">
           <div className="mb-6 flex items-center gap-3">
             <img
-              src="/logo-bmq.jpg"
+              src="/logo-bmq.png"
               alt="Bem Me Quer"
-              width={40}
-              height={40}
-              className="h-10 w-10 shrink-0 rounded-full object-cover"
+              width={44}
+              height={44}
+              className="h-11 w-11 shrink-0 rounded-full object-cover"
               style={{ border: "2px solid #CBB275" }}
             />
             <div>
@@ -191,11 +192,11 @@ function LoginCard({ onLogin }: { onLogin: (p: string) => void }) {
       >
         <div className="text-center">
           <img
-            src="/logo-bmq.jpg"
+            src="/logo-bmq.png"
             alt="Bem Me Quer"
-            width={48}
-            height={48}
-            className="mx-auto h-12 w-12 rounded-full object-cover"
+            width={72}
+            height={72}
+            className="mx-auto h-18 w-18 rounded-full object-cover"
             style={{ border: "2px solid #CBB275" }}
           />
           <h1 className="mt-3 font-display text-2xl">Painel Admin</h1>
@@ -248,6 +249,7 @@ function OrdersTab({ password }: { password: string }) {
   const qc = useQueryClient();
   const list = useServerFn(adminListOrders);
   const update = useServerFn(adminUpdateOrderStatus);
+  const del = useServerFn(adminDeleteOrder);
   const [filter, setFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -263,6 +265,17 @@ function OrdersTab({ password }: { password: string }) {
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       toast.success("Status atualizado");
     },
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => del({ data: { password, id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["admin-stats"] });
+      setExpanded(null);
+      toast.success("Pedido excluído");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao excluir"),
   });
 
   const filtered = (orders ?? []).filter((o) => (filter === "all" ? true : o.status === filter));
@@ -380,6 +393,26 @@ function OrdersTab({ password }: { password: string }) {
                                 ))}
                               </SelectContent>
                             </Select>
+                          </div>
+                          <div className="mt-4 border-t border-border/60 pt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              disabled={remove.isPending}
+                              onClick={() => {
+                                if (
+                                  confirm(
+                                    `Excluir o pedido ${o.order_number}? Esta ação não pode ser desfeita.`,
+                                  )
+                                ) {
+                                  remove.mutate(o.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {remove.isPending ? "Excluindo…" : "Excluir pedido"}
+                            </Button>
                           </div>
                         </div>
                       </div>

@@ -16,11 +16,11 @@ export function SiteFooter() {
         <div>
           <div className="flex items-center gap-3">
             <img
-              src="/logo-bmq.jpg"
+              src="/logo-bmq.png"
               alt="Floricultura Bem Me Quer"
-              width={40}
-              height={40}
-              className="h-10 w-10 shrink-0 rounded-full object-cover"
+              width={56}
+              height={56}
+              className="h-14 w-14 shrink-0 rounded-full object-cover"
               style={{ border: "2px solid #CBB275" }}
             />
             <div>

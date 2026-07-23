@@ -104,13 +104,13 @@ export function CinematicIntro() {
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{petals}</div>
 
       <img
-        src="/logo-bmq.jpg"
+        src="/logo-bmq.png"
         alt="Floricultura Bem Me Quer"
-        width={96}
-        height={96}
+        width={140}
+        height={140}
         style={{
-          width: 96,
-          height: 96,
+          width: 140,
+          height: 140,
           borderRadius: "50%",
           objectFit: "cover",
           border: "3px solid #CBB275",

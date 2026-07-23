@@ -68,6 +68,15 @@ export const adminUpdateOrderStatus = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const adminDeleteOrder = createServerFn({ method: "POST" })
+  .inputValidator((data: { password: string; id: string }) => data)
+  .handler(async ({ data }) => {
+    const admin = await verifyAdmin(data.password);
+    const { error } = await admin.from("orders").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const adminListProducts = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
