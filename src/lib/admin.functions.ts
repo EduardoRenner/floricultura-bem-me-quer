@@ -86,7 +86,10 @@ export const adminListProducts = createServerFn({ method: "POST" })
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return products ?? [];
+    const rows = products ?? [];
+    const { signImageUrls } = await import("@/lib/storage.server");
+    const signed = await signImageUrls(rows.map((p) => p.image_url));
+    return rows.map((p, i) => ({ ...p, image_url: signed[i] }));
   });
 
 export const adminUpsertProduct = createServerFn({ method: "POST" })
@@ -108,13 +111,16 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
     const p = data.product;
+    const { normalizeImageUrlForStorage } = await import("@/lib/storage.server");
 
     const base = {
       name: p.name,
       description: p.description ?? null,
       price: p.price,
       category: p.category,
-      image_url: p.image_url ?? null,
+      // Never persist signed URLs (they expire). Normalize any signed or
+      // public URL back to the canonical public URL of our bucket.
+      image_url: normalizeImageUrlForStorage(p.image_url ?? null),
       active: p.active,
     };
     const withOccasions = { ...base, occasions: p.occasions ?? [] };
@@ -160,8 +166,14 @@ export const adminUploadProductImage = createServerFn({ method: "POST" })
       .upload(path, buffer, { contentType: data.contentType, upsert: false });
     if (uploadError) throw new Error(uploadError.message);
 
-    const { data: publicUrlData } = admin.storage.from("product-images").getPublicUrl(path);
-    return { url: publicUrlData.publicUrl };
+    // Bucket is private — return a short-lived signed URL for preview.
+    // On save, adminUpsertProduct normalizes this back to the canonical
+    // public URL before persisting, so no expiring URL is ever stored.
+    const { data: signed, error: signError } = await admin.storage
+      .from("product-images")
+      .createSignedUrl(path, 60 * 60);
+    if (signError) throw new Error(signError.message);
+    return { url: signed.signedUrl };
   });
 
 export const adminDeleteProduct = createServerFn({ method: "POST" })
