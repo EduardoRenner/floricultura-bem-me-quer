@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { listPublicProducts } from "@/lib/products.functions";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ProductCard, type Product } from "@/components/site/ProductCard";
@@ -41,6 +42,7 @@ function OccasionsPage() {
   const { filter } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [selected, setSelected] = useState<OccasionId | null>(filter ?? null);
+  const fetchProducts = useServerFn(listPublicProducts);
 
   useEffect(() => {
     setSelected(filter ?? null);
@@ -49,12 +51,7 @@ function OccasionsPage() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("active", true)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+      const data = await fetchProducts();
       return data as Product[];
     },
   });
