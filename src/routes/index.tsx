@@ -17,7 +17,8 @@ import {
   Star,
   Truck,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { listPublicProducts } from "@/lib/products.functions";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ProductCard, type Product } from "@/components/site/ProductCard";
@@ -73,16 +74,12 @@ const REVIEWS = [
 
 function Home() {
   const [category, setCategory] = useState("Todos");
+  const fetchProducts = useServerFn(listPublicProducts);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("active", true)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+      const data = await fetchProducts();
       return data as Product[];
     },
   });
