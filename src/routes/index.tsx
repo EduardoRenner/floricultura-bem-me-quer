@@ -9,12 +9,11 @@ import {
   ChevronRight,
   Clock,
   Flower2,
-  Heart,
   MapPin,
   MessageCircle,
   Phone,
-  Sparkles,
   Star,
+  Store,
   Truck,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -22,12 +21,8 @@ import { listPublicProducts } from "@/lib/products.functions";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ProductCard, type Product } from "@/components/site/ProductCard";
-import { SurpriseMeSection, SurpriseMeButton } from "@/components/site/SurpriseMe";
 import { OccasionsHomeSection } from "@/components/site/OccasionsGrid";
-import { PetalField } from "@/components/site/PetalField";
-import { Reveal } from "@/components/site/Reveal";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
-import { AsciiArt } from "@/components/ui/ascii-flower";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,11 +35,21 @@ import {
   PHONE_TEL,
   WHATSAPP_URL,
   isOpenNow,
+  productImageUrl,
 } from "@/lib/shop";
 
 export const Route = createFileRoute("/")({ component: Home });
 
 const CATEGORIES = ["Todos", "Rosas", "Arranjos", "Presentes", "Plantas"];
+
+// Fotos fixas do hero e da seção "sobre". São produtos reais do catálogo,
+// referenciados direto para carregarem junto com o HTML — se dependessem da
+// consulta ao banco, a dobra inicial abriria vazia e depois saltaria.
+// Se algum dia essas fotos saírem do Cloudinary, trocar as URLs aqui.
+const HERO_IMAGE =
+  "https://res.cloudinary.com/w7wufhvh/image/upload/f_auto,q_auto/WhatsApp_Image_2026-07-20_at_17.17.14_pklurx";
+const ABOUT_IMAGE =
+  "https://res.cloudinary.com/w7wufhvh/image/upload/f_auto,q_auto/WhatsApp_Image_2026-07-20_at_17.17.15_1_adjh5y";
 
 // Avaliações reais dos clientes (Google). Média 4,5 em 42 avaliações.
 const REVIEWS = [
@@ -96,114 +101,112 @@ function Home() {
     <div className="min-h-screen">
       <SiteHeader />
 
-      {/* HERO */}
+      {/* HERO — foto real do catálogo, layout assimétrico.
+          Saíram daqui a arte ASCII animada e as pétalas flutuantes: efeito
+          decorativo competindo com o produto e atrasando o primeiro conteúdo
+          útil. Quem chega quer ver flor, não animação. */}
       <section className="relative overflow-hidden" style={{ background: "var(--surface-deep)" }}>
-        {/* Fundo: flor em ASCII animada (auto-hospedada) + overlay para leitura */}
-        <AsciiArt className="absolute inset-0" />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(17,20,10,0.55) 0%, rgba(29,42,21,0.72) 50%, #29321A 100%)",
-          }}
-          aria-hidden
-        />
-        <div className="floral-pattern absolute inset-0" aria-hidden />
-        <PetalField count={10} />
-        <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-24 text-center md:py-32">
-          <span className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-xs uppercase tracking-widest text-accent backdrop-blur-sm">
-            <Flower2 className="h-3.5 w-3.5" /> Maravilha · Santa Catarina
-          </span>
-          <h1 className="max-w-3xl font-display text-4xl leading-tight text-accent md:text-6xl">
-            Flores que falam pelo coração
-          </h1>
-          <p className="max-w-2xl text-base text-foreground/90 md:text-lg">
-            Arranjos artesanais, rosas e presentes florais para cada ocasião especial.
-          </p>
-          <div className="mt-2 flex flex-wrap justify-center gap-3">
-            <Button
-              size="lg"
-              onClick={() => document.getElementById("produtos")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              Ver Produtos
-            </Button>
-            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer">
-              <Button size="lg" variant="outline" className="border-accent bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
-                <Phone className="mr-2 h-4 w-4" /> Falar pelo WhatsApp
-              </Button>
-            </a>
-          </div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-foreground/80">
-            <span className="inline-flex items-center gap-1.5">
-              <Star className="h-4 w-4 fill-accent text-accent" /> 4.5/5 estrelas
+        <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-20">
+          <div className="order-2 md:order-1">
+            <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
+              <Flower2 className="h-3.5 w-3.5" /> Maravilha · Santa Catarina
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Truck className="h-4 w-4 text-accent" /> Entrega disponível
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Accessibility className="h-4 w-4 text-accent" /> Acessível
-            </span>
-          </div>
-        </div>
-      </section>
 
-      {/* SURPREENDA-ME */}
-      <SurpriseMeSection products={products ?? []} />
+            <h1 className="mt-4 font-display text-[2.1rem] leading-[1.1] text-accent sm:text-5xl md:text-[3.4rem]">
+              Flores que falam
+              <br />
+              pelo coração
+            </h1>
 
-      {/* OCASIÕES */}
-      <OccasionsHomeSection />
-
-      {/* SOBRE */}
-      <section id="sobre" className="mx-auto max-w-6xl px-4 py-20">
-        <div className="grid gap-10 md:grid-cols-2 md:items-center">
-          <Reveal>
-            <div className="text-xs uppercase tracking-widest text-accent">Sobre nós</div>
-            <h2 className="mt-2 font-display text-3xl md:text-4xl">Feito com carinho, em Maravilha</h2>
-            <p className="mt-4 text-muted-foreground">
-              Localizada no coração de Maravilha - SC, a Floricultura Bem Me Quer nasceu do amor pelas
-              flores e pelo cuidado com as pessoas. Aqui você encontra arranjos feitos com carinho para
-              tornar cada momento especial.
+            <p className="mt-5 max-w-md text-[15px] leading-relaxed text-foreground/85 md:text-base">
+              Buquês, arranjos e cestas montados por quem entende de flor. Entregamos em
+              Maravilha ou você retira na loja, no centro da cidade.
             </p>
-          </Reveal>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: Flower2, title: "Variedade" },
-              { icon: Sparkles, title: "Qualidade" },
-              { icon: Heart, title: "Atendimento" },
-            ].map((it) => (
-              <div
-                key={it.title}
-                className="card-hover flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-5 text-center shadow-sm hover:-translate-y-1"
-              >
-                <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary text-primary">
-                  <it.icon className="h-5 w-5" />
-                </div>
-                <div className="font-display text-base">{it.title}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* PRODUTOS */}
-      <section id="produtos" className="relative bg-secondary/25 py-20">
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="mb-8 flex flex-col items-center gap-3 text-center">
-            <Reveal>
-              <div className="text-xs uppercase tracking-widest text-accent">Nossos produtos</div>
-              <h2 className="font-display text-3xl md:text-4xl">Escolha o presente perfeito</h2>
-              <p className="mx-auto max-w-xl text-muted-foreground">
-                Buquês, arranjos e plantas cuidadosamente selecionados para cada ocasião.
-              </p>
-            </Reveal>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-              <AnimatedTabs tabs={CATEGORIES} active={category} onChange={setCategory} />
-              <SurpriseMeButton
-                products={products ?? []}
-                variant="pill"
-                label="Surpreenda-me"
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Button
+                size="lg"
+                className="h-12 px-7"
+                onClick={() =>
+                  document.getElementById("produtos")?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                Ver o catálogo
+              </Button>
+              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 w-full border-accent bg-transparent px-7 text-accent hover:bg-accent hover:text-accent-foreground sm:w-auto"
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" /> Pedir no WhatsApp
+                </Button>
+              </a>
+            </div>
+
+            {/* Prova social concreta em vez de selo genérico */}
+            <div className="mt-7 flex items-center gap-2.5 text-sm text-foreground/75">
+              <span className="flex">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Star key={i} className="h-4 w-4 fill-accent text-accent" />
+                ))}
+              </span>
+              <span>
+                <strong className="text-foreground">4,5</strong> em 42 avaliações no Google
+              </span>
+            </div>
+          </div>
+
+          {/* Foto real de produto. Fixa de propósito: carrega junto com o HTML,
+              sem esperar a consulta ao catálogo, então não há salto de layout. */}
+          <div className="order-1 md:order-2">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl md:aspect-[4/4.4]">
+              <img
+                src={productImageUrl(HERO_IMAGE, 900)}
+                alt="Ramalhete de girassóis da Floricultura Bem Me Quer"
+                fetchPriority="high"
+                className="h-full w-full object-cover"
               />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Faixa de confiança — só afirmações verificáveis */}
+      <div className="border-y border-gold/25 bg-secondary/40">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2.5 px-4 py-3.5 text-[13px] text-foreground/80">
+          <span className="inline-flex items-center gap-2">
+            <Truck className="h-4 w-4 text-accent" /> Entrega em Maravilha
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Store className="h-4 w-4 text-accent" /> Retirada na loja
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Clock className="h-4 w-4 text-accent" />
+            {openNow ? "Aberto agora" : "Fechado agora"}
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Accessibility className="h-4 w-4 text-accent" /> Acesso para cadeirantes
+          </span>
+        </div>
+      </div>
+
+      {/* PRODUTOS — logo depois do hero: é o que a pessoa veio ver.
+          Antes vinha em 4º lugar, atrás de "Surpreenda-me", ocasiões e sobre. */}
+      <section id="produtos" className="relative py-12 md:py-16">
+        <div className="mx-auto max-w-6xl px-4">
+          {/* Título alinhado à esquerda com as abas à direita: quebra a
+              simetria centralizada que se repetia em todas as seções. */}
+          <div className="mb-6 flex flex-col gap-4 md:mb-8 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="font-display text-[1.75rem] leading-tight md:text-4xl">
+                Escolha o presente perfeito
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
+                {products?.length ?? 0} opções disponíveis hoje
+              </p>
+            </div>
+            <AnimatedTabs tabs={CATEGORIES} active={category} onChange={setCategory} />
           </div>
 
           {isLoading ? (
@@ -226,28 +229,67 @@ function Home() {
         </div>
       </section>
 
-      {/* REVIEWS */}
-      <section className="mx-auto max-w-6xl px-4 py-20">
-        <Reveal className="mb-10 flex flex-col items-center text-center">
-          <div className="text-xs uppercase tracking-widest text-accent">Avaliações</div>
-          <h2 className="mt-2 font-display text-3xl md:text-4xl">O que nossos clientes dizem</h2>
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-secondary/60 px-4 py-1.5 text-sm text-foreground">
-            <Star className="h-4 w-4 fill-primary text-primary" />
-            <span className="font-semibold">4,5</span>
-            <span className="text-muted-foreground">média em 42 avaliações no Google</span>
+      {/* OCASIÕES — depois do catálogo: quem não sabe o que escolher
+          navega por motivo, não por categoria de produto. */}
+      <OccasionsHomeSection />
+
+      {/* SOBRE — texto curto e concreto no lugar dos três substantivos
+          abstratos ("Variedade / Qualidade / Atendimento"), que não diziam
+          nada sobre esta loja em específico. */}
+      <section id="sobre" className="bg-secondary/25 py-14 md:py-20">
+        <div className="mx-auto grid max-w-5xl gap-8 px-4 md:grid-cols-[1fr_1.15fr] md:items-center md:gap-12">
+          <div className="overflow-hidden rounded-2xl">
+            <img
+              src={productImageUrl(ABOUT_IMAGE, 700)}
+              alt="Arranjo montado na Floricultura Bem Me Quer"
+              loading="lazy"
+              decoding="async"
+              className="aspect-[4/3] w-full object-cover"
+            />
           </div>
-        </Reveal>
+          <div>
+            <h2 className="font-display text-[1.75rem] leading-tight md:text-4xl">
+              Uma floricultura de bairro, no centro de Maravilha
+            </h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+              Ficamos na Av. Anita Garibaldi, 266. Cada arranjo sai daqui montado à mão — você
+              escolhe pelo site ou manda mensagem, e a gente ajusta cores e tamanho do jeito que
+              você precisa.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-foreground/80">
+              <span className="inline-flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-accent" /> Centro de Maravilha
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Truck className="h-4 w-4 text-accent" /> Entrega na cidade
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AVALIAÇÕES */}
+      <section className="mx-auto max-w-6xl px-4 py-14 md:py-20">
+        <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <h2 className="font-display text-[1.75rem] leading-tight md:text-4xl">
+            O que dizem quem já comprou
+          </h2>
+          <div className="inline-flex items-center gap-2 text-sm">
+            <Star className="h-4 w-4 fill-accent text-accent" />
+            <span className="font-semibold text-foreground">4,5</span>
+            <span className="text-muted-foreground">· 42 avaliações no Google</span>
+          </div>
+        </div>
         <ReviewsCarousel />
       </section>
 
       {/* HORARIOS */}
-      <section id="horarios" className="bg-secondary/25 py-20">
+      <section id="horarios" className="bg-secondary/25 py-14 md:py-20">
         <div className="mx-auto max-w-4xl px-4">
           <div className="mb-8 text-center">
-            <Reveal>
-              <div className="text-xs uppercase tracking-widest text-accent">Horários</div>
-              <h2 className="mt-2 font-display text-3xl md:text-4xl">Estamos aqui para você</h2>
-            </Reveal>
+            <h2 className="font-display text-[1.75rem] leading-tight md:text-4xl">
+              Horários de atendimento
+            </h2>
             <div className="mt-3">
               <span
                 className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium"
@@ -276,11 +318,12 @@ function Home() {
       </section>
 
       {/* CONTATO */}
-      <section id="contato" className="mx-auto max-w-6xl px-4 py-20">
-        <Reveal className="mb-10 text-center">
-          <div className="text-xs uppercase tracking-widest text-accent">Contato & Localização</div>
-          <h2 className="mt-2 font-display text-3xl md:text-4xl">Venha nos visitar</h2>
-        </Reveal>
+      <section id="contato" className="mx-auto max-w-6xl px-4 py-14 md:py-20">
+        <div className="mb-8 text-center">
+          <h2 className="font-display text-[1.75rem] leading-tight md:text-4xl">
+            Venha nos visitar
+          </h2>
+        </div>
         <div className="grid gap-8 md:grid-cols-2">
           <div className="overflow-hidden rounded-2xl border border-border/60 shadow-sm">
             <iframe

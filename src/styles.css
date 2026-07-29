@@ -40,6 +40,10 @@
   --color-gold: var(--gold);
   --color-gold-light: var(--gold-light);
   --color-leaf-deep: var(--leaf-deep);
+  --color-paper: var(--paper);
+  --color-paper-foreground: var(--paper-foreground);
+  --color-paper-muted: var(--paper-muted);
+  --color-paper-border: var(--paper-border);
 }
 
 :root {
@@ -70,6 +74,15 @@
 
   --muted: #29321A;
   --muted-foreground: #A5A17E;
+
+  /* "Papel": superfície clara para onde a foto do produto é a protagonista.
+     O verde escuro continua sendo a marca (topo, hero, rodapé), mas o
+     catálogo — a parte que vende — vira claro: flor colorida sobre fundo
+     escuro perde saturação e o cartão fica pesado. */
+  --paper: #F7F4EA;
+  --paper-foreground: #1F2A16;
+  --paper-muted: #6E6A55;
+  --paper-border: #E2DCC9;
 
   --destructive: #7f1d1d;
   --destructive-foreground: #F0EDD8;

@@ -16,43 +16,44 @@ export type Product = {
 
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
+
   return (
-    // flex-col + h-full: com títulos de alturas diferentes na mesma linha do
-    // grid, o preço e o botão ficavam desalinhados entre cards vizinhos.
-    <article className="card-hover group flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
-      <div className="aspect-[4/5] shrink-0 overflow-hidden" style={{ background: "#1A2011" }}>
+    // Cartão claro sobre o fundo escuro da marca: a foto da flor é o que
+    // vende, e ela perde saturação quando fica sobre superfície escura.
+    // flex-col + rodapé em mt-auto mantém preço e botão alinhados entre
+    // cartões vizinhos, mesmo com títulos de alturas diferentes.
+    <article className="group flex h-full flex-col overflow-hidden rounded-xl bg-paper text-paper-foreground shadow-[0_1px_2px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,0,0,0.4)]">
+      <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-[#ECE7D8]">
         {product.image_url ? (
           <img
-            // O card exibe ~260px de largura; 600 cobre telas retina sem
-            // baixar o original de 1234px.
+            // Exibido a ~260px; 600 cobre telas retina sem baixar o original.
             src={productImageUrl(product.image_url, 600)}
             alt={product.name}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="grid h-full w-full place-items-center text-muted-foreground">Sem foto</div>
+          <div className="grid h-full w-full place-items-center text-paper-muted">Sem foto</div>
         )}
       </div>
-      {/* No celular são 2 cards por linha (~165px), então tipografia e
-          espaçamento apertam um pouco antes de voltar ao normal em sm+. */}
-      <div className="flex flex-1 flex-col space-y-1.5 p-3 sm:space-y-2 sm:p-4">
-        <div className="text-[10px] uppercase tracking-widest text-accent">{product.category}</div>
-        <h3 className="font-display text-base leading-tight text-foreground sm:text-lg">
-          {product.name}
-        </h3>
+
+      <div className="flex flex-1 flex-col gap-1.5 p-3.5 sm:gap-2 sm:p-4">
+        <h3 className="font-display text-[15px] leading-snug sm:text-lg">{product.name}</h3>
+
         {product.description && (
-          <p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">
+          <p className="line-clamp-2 text-xs leading-relaxed text-paper-muted sm:text-[13px]">
             {product.description}
           </p>
         )}
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1 sm:pt-2">
-          <span className="font-display text-lg text-accent sm:text-xl">
+
+        <div className="mt-auto pt-2">
+          <div className="font-display text-xl leading-none sm:text-[22px]">
             {formatBRL(Number(product.price))}
-          </span>
+          </div>
           <Button
             size="sm"
+            className="mt-2.5 h-10 w-full"
             onClick={() => {
               add({
                 id: product.id,
