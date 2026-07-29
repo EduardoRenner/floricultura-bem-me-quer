@@ -15,20 +15,24 @@ export type Faixa = [string, string];
 export type DiaHorario = { dia: number; faixas: Faixa[] };
 
 export type DeliveryConfig = {
-  /** A loja está aceitando entrega no mesmo dia agora? */
-  sameDay: boolean;
-  /** Até que horas o pedido garante entrega hoje. Ex.: "16:00". */
-  cutoff: string;
-  /** Observação livre, ex.: "Centro e bairros próximos". */
+  /**
+   * Previsão publicada pela loja. Vazio = o site não anuncia prazo nenhum e
+   * apenas avisa que o horário é combinado no WhatsApp.
+   *
+   * Frase livre, escrita por quem atende: "até 1 hora", "ainda hoje",
+   * "amanhã pela manhã". Quem sabe o movimento do dia é ela.
+   */
+  previsao: string;
+  /** Observação de área, ex.: "Centro e bairros próximos". */
   note: string;
 };
 
 export type DeliveryStatus = {
-  /** `hoje` = dá tempo; `proximo` = fora da janela; `combinar` = chave desligada. */
-  kind: "hoje" | "proximo" | "combinar";
+  /** `combinar` = sem previsão publicada; `previsao` = a loja anunciou uma. */
+  kind: "combinar" | "previsao";
   /** Frase completa, para o hero e o checkout. */
   texto: string;
-  /** Versão curta, para caber na faixa e no card. */
+  /** Versão curta, para caber na faixa. */
   curto: string;
 };
 
@@ -54,11 +58,7 @@ export const HORARIOS_PADRAO: DiaHorario[] = [
   { dia: 6, faixas: [["08:00", "12:00"]] },
 ];
 
-export const ENTREGA_PADRAO: DeliveryConfig = {
-  sameDay: true,
-  cutoff: "16:00",
-  note: "",
-};
+export const ENTREGA_PADRAO: DeliveryConfig = { previsao: "", note: "" };
 
 /** "16:30" -> 990 minutos. Devolve null se o formato não for válido. */
 export function minutosDe(hhmm: string): number | null {
@@ -104,80 +104,56 @@ export function estaAbertoAgora(horarios: DiaHorario[], now: Date = new Date()):
   });
 }
 
-/** Primeiro dia com atendimento a partir de (e incluindo) `aPartirDe`. */
-function proximoDiaAberto(
-  horarios: DiaHorario[],
-  aPartirDe: number,
-): { dia: number; abre: string } | null {
-  for (let i = 0; i < 7; i++) {
-    const d = (aPartirDe + i) % 7;
-    const h = horarios.find((x) => x.dia === d);
-    if (h && h.faixas.length > 0) return { dia: d, abre: h.faixas[0][0] };
-  }
-  return null;
+
+/**
+ * A loja ainda atende hoje? Verdadeiro se está aberta agora OU se reabre mais
+ * tarde no mesmo dia.
+ *
+ * É este o critério para exibir a previsão publicada — e não "aberta agora".
+ * No intervalo de almoço a loja está fechada, mas reabre às 13h e a previsão
+ * que a dona publicou para o dia continua valendo. Só depois do último
+ * fechamento (ou em dia sem atendimento) é que ela some.
+ */
+export function atendeAindaHoje(horarios: DiaHorario[], now: Date = new Date()): boolean {
+  const { dia, minutos } = agoraEmSP(now);
+  const hoje = horarios.find((h) => h.dia === dia);
+  if (!hoje) return false;
+  return hoje.faixas.some(([, fim]) => {
+    const b = minutosDe(fim);
+    return b !== null && minutos < b;
+  });
 }
 
 /**
- * Frase de prazo de entrega.
+ * Frase de prazo exibida no site.
  *
- * Nunca promete o que não dá para cumprir: se a chave estiver desligada, se
- * hoje não for dia de atendimento, ou se já passou do horário de corte, o
- * texto muda para a próxima janela real.
+ * O site NAO promete horario. Quem sabe o movimento do dia e quem atende, e o
+ * prazo real e dado por ela na resposta do WhatsApp, depois que o pedido
+ * chega. Prometer um numero aqui seria assumir um compromisso que a loja nao
+ * controla — e cliente que le "1 hora" e recebe em 4 vira avaliacao ruim.
+ *
+ * Por padrao o texto apenas avisa isso. Se a loja publicar uma previsao pelo
+ * painel (ex.: num dia calmo, "ate 1 hora"), ela aparece — sempre com a
+ * ressalva de que a confirmacao vem no WhatsApp.
  */
 export function statusEntrega(
   cfg: DeliveryConfig,
-  horarios: DiaHorario[],
-  now: Date = new Date(),
+  _horarios: DiaHorario[] = HORARIOS_PADRAO,
+  _now: Date = new Date(),
 ): DeliveryStatus {
-  const lista = horarios.length ? horarios : HORARIOS_PADRAO;
+  const previsao = (cfg.previsao ?? "").trim();
 
-  if (!cfg.sameDay) {
+  if (!previsao) {
     return {
       kind: "combinar",
-      texto: "Entrega em Maravilha — combine a data pelo WhatsApp",
-      curto: "Combine a data",
+      texto: "O prazo de entrega é combinado com você no WhatsApp ao finalizar o pedido",
+      curto: "Prazo combinado no WhatsApp",
     };
   }
 
-  const { dia, minutos } = agoraEmSP(now);
-  const hoje = lista.find((h) => h.dia === dia);
-  const corte = minutosDe(cfg.cutoff);
-  const fechaHoje = hoje?.faixas.length
-    ? minutosDe(hoje.faixas[hoje.faixas.length - 1][1])
-    : null;
-
-  // Dá para entregar hoje: é dia de atendimento, ainda não passou do corte e
-  // a loja ainda não fechou de vez.
-  const dentroDaJanela =
-    !!hoje?.faixas.length &&
-    corte !== null &&
-    minutos < corte &&
-    fechaHoje !== null &&
-    minutos < fechaHoje;
-
-  if (dentroDaJanela) {
-    return {
-      kind: "hoje",
-      texto: `Peça até ${cfg.cutoff} e entregamos hoje em Maravilha`,
-      curto: `Entrega hoje se pedir até ${cfg.cutoff}`,
-    };
-  }
-
-  // Fora da janela: aponta a próxima abertura. Se hoje já passou, começa amanhã.
-  const proximo = proximoDiaAberto(lista, (dia + 1) % 7);
-  if (!proximo) {
-    return {
-      kind: "combinar",
-      texto: "Entrega em Maravilha — combine a data pelo WhatsApp",
-      curto: "Combine a data",
-    };
-  }
-
-  const amanha = proximo.dia === (dia + 1) % 7;
-  const quando = amanha ? "amanhã" : DIAS_CURTOS[proximo.dia];
   return {
-    kind: "proximo",
-    texto: `Próxima entrega ${quando} a partir das ${proximo.abre}`,
-    curto: `Entrega ${quando} · ${proximo.abre}`,
+    kind: "previsao",
+    texto: `Previsão de entrega hoje: ${previsao} — confirmamos no WhatsApp ao finalizar`,
+    curto: `Entrega hoje: ${previsao}`,
   };
 }

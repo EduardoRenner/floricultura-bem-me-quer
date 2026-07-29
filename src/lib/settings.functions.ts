@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import {
   ENTREGA_PADRAO,
   HORARIOS_PADRAO,
+  atendeAindaHoje,
   estaAbertoAgora,
   statusEntrega,
   type DeliveryConfig,
@@ -59,12 +60,11 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
 
     const horarios = lerHorarios(mapa.get("business_hours"));
 
-    const cutoff = mapa.get("delivery_cutoff");
+    const previsao = mapa.get("delivery_estimate");
     const note = mapa.get("delivery_note");
     const entrega: DeliveryConfig = {
-      sameDay: mapa.get("delivery_same_day") !== false,
-      cutoff: typeof cutoff === "string" && cutoff ? cutoff : ENTREGA_PADRAO.cutoff,
-      note: typeof note === "string" ? note : "",
+      previsao: typeof previsao === "string" ? previsao.trim().slice(0, 80) : "",
+      note: typeof note === "string" ? note.trim().slice(0, 120) : "",
     };
 
     // O admin pode forçar aberto/fechado independente do horário (feriado,
@@ -75,20 +75,16 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
 
     const taxa = Number(mapa.get("delivery_fee"));
 
-    // Só um fechamento FORÇADO pelo admin cancela a promessa de hoje.
-    // Estar fechado agora não basta: no intervalo de almoço a loja reabre às
-    // 13h e ainda entrega no mesmo dia — quem decide isso é o horário de
-    // corte, que statusEntrega já avalia.
-    const forcadoFechado = override === false;
+    // A previsão vale enquanto a loja ainda atender hoje — não apenas
+    // enquanto estiver aberta. No intervalo de almoço ela reabre às 13h e a
+    // previsão publicada continua de pé; depois do último fechamento, não.
+    const podePrever = atendeAindaHoje(horarios);
 
     return {
       horarios,
       entrega,
       abertoAgora,
-      status: statusEntrega(
-        forcadoFechado ? { ...entrega, sameDay: false } : entrega,
-        horarios,
-      ),
+      status: statusEntrega(podePrever ? entrega : ENTREGA_PADRAO, horarios),
       taxaEntrega: Number.isFinite(taxa) && taxa >= 0 ? taxa : 15,
     };
   },

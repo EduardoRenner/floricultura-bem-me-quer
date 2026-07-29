@@ -790,8 +790,7 @@ function SettingsTab({ password }: { password: string }) {
   const [fee, setFee] = useState<string>("");
   const [min, setMin] = useState<string>("");
   const [override, setOverride] = useState<string>("auto");
-  const [sameDay, setSameDay] = useState(true);
-  const [cutoff, setCutoff] = useState<string>("16:00");
+  const [previsao, setPrevisao] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [horarios, setHorarios] = useState<DiaHorario[]>(HORARIOS_PADRAO);
 
@@ -801,8 +800,7 @@ function SettingsTab({ password }: { password: string }) {
     setMin(String(map.get("minimum_order") ?? ""));
     const o = map.get("shop_open_override");
     setOverride(o === true ? "open" : o === false ? "closed" : "auto");
-    setSameDay(map.get("delivery_same_day") !== false);
-    setCutoff(String(map.get("delivery_cutoff") ?? "16:00"));
+    setPrevisao(String(map.get("delivery_estimate") ?? ""));
     setNote(String(map.get("delivery_note") ?? ""));
     const h = map.get("business_hours");
     if (Array.isArray(h) && h.length) setHorarios(h as DiaHorario[]);
@@ -905,53 +903,74 @@ function SettingsTab({ password }: { password: string }) {
             </Button>
           </div>
         </div>
-        {/* ENTREGA NO MESMO DIA */}
+        {/* PREVISÃO DE ENTREGA */}
         <div className="rounded-2xl border border-border bg-card p-6">
-          <Label className="text-base">Entrega no mesmo dia</Label>
+          <Label className="text-base">Previsão de entrega</Label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Desligue em dia cheio. O site deixa de prometer entrega hoje na hora, sem precisar
-            de ninguém mexer no código.
+            Deixe vazio e o site avisa que o prazo é combinado no WhatsApp ao finalizar o
+            pedido — que é como funciona na prática. Preencha só quando quiser anunciar uma
+            previsão no site, num dia que você já sabe como está o movimento.
           </p>
 
-          <div className="mt-4 flex items-center gap-3">
-            <Switch checked={sameDay} onCheckedChange={setSameDay} />
-            <span className="text-sm">
-              {sameDay ? "Aceitando pedidos para hoje" : "Não estamos entregando hoje"}
-            </span>
+          <div className="mt-4">
+            <Label className="text-xs">O que aparece no site</Label>
+            <Input
+              value={previsao}
+              onChange={(e) => setPrevisao(e.target.value)}
+              placeholder="Vazio = combinar no WhatsApp"
+              maxLength={80}
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {["até 1 hora", "até 2 horas", "ainda hoje", "amanhã pela manhã"].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPrevisao(p)}
+                  className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:border-primary hover:text-foreground"
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPrevisao("")}
+                className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:border-destructive hover:text-destructive"
+              >
+                limpar
+              </button>
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label className="text-xs">Pedidos até</Label>
-              <Input
-                type="time"
-                value={cutoff}
-                onChange={(e) => setCutoff(e.target.value)}
-                disabled={!sameDay}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Depois desse horário o site passa a anunciar a próxima entrega.
-              </p>
+          {/* Prévia literal: evita publicar uma frase que fica estranha. */}
+          <div className="mt-4 rounded-lg bg-muted/60 p-3">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Prévia no site
             </div>
-            <div>
-              <Label className="text-xs">Observação (opcional)</Label>
-              <Input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ex.: Centro e bairros próximos"
-              />
-            </div>
+            <p className="mt-1 text-sm">
+              {previsao.trim()
+                ? `Previsão de entrega hoje: ${previsao.trim()} — confirmamos no WhatsApp ao finalizar`
+                : "O prazo de entrega é combinado com você no WhatsApp ao finalizar o pedido"}
+            </p>
+          </div>
+
+          <div className="mt-4">
+            <Label className="text-xs">Observação de área (opcional)</Label>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ex.: Centro e bairros próximos"
+              maxLength={120}
+            />
           </div>
 
           <Button
             className="mt-4"
             onClick={async () => {
-              await save.mutateAsync({ key: "delivery_same_day", value: sameDay });
-              await save.mutateAsync({ key: "delivery_cutoff", value: cutoff });
-              await save.mutateAsync({ key: "delivery_note", value: note });
+              await save.mutateAsync({ key: "delivery_estimate", value: previsao.trim() });
+              await save.mutateAsync({ key: "delivery_note", value: note.trim() });
             }}
           >
-            Salvar entrega
+            Salvar previsão
           </Button>
         </div>
 

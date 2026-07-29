@@ -117,9 +117,11 @@ function Home() {
               <Flower2 className="h-3.5 w-3.5" /> Maravilha · Santa Catarina
             </span>
 
+            {/* O espaço antes do <br> é intencional: sem ele o textContent vira
+                "falampelo", que é o que leitor de tela e buscador leem. */}
             <h1 className="mt-4 font-display text-[2.1rem] leading-[1.1] text-accent sm:text-5xl md:text-[3.4rem]">
-              Flores que falam
-              <br />
+              Flores que falam{" "}
+              <br className="hidden sm:inline" />
               pelo coração
             </h1>
 
@@ -149,12 +151,12 @@ function Home() {
               </a>
             </div>
 
-            {/* Prazo real, calculado no servidor. É a informação que mais
-                pesa na decisão de comprar flor — e a que mais some quando
-                fica escrita fixa no código. */}
-            <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-gold/35 bg-secondary/50 px-3.5 py-2.5 text-[13px] md:text-sm">
-              <Truck className="h-4 w-4 shrink-0 text-accent" />
-              <span className={entrega.kind === "hoje" ? "text-accent" : "text-foreground/85"}>
+            {/* O site não promete horário: quem dá o prazo real é quem atende,
+                na resposta do WhatsApp. Aqui só deixamos isso claro — e, se a
+                loja publicar uma previsão pelo painel, ela aparece. */}
+            <div className="mt-5 flex items-start gap-2 rounded-lg border border-gold/35 bg-secondary/50 px-3.5 py-2.5 text-[13px] md:text-sm">
+              <Truck className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+              <span className={entrega.kind === "previsao" ? "text-accent" : "text-foreground/85"}>
                 {entrega.texto}
                 {cfgEntrega.note ? ` · ${cfgEntrega.note}` : ""}
               </span>
@@ -227,7 +229,7 @@ function Home() {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-96 rounded-2xl" />
               ))}
@@ -237,7 +239,7 @@ function Home() {
               Nenhum produto nesta categoria no momento.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
               {filtered.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
