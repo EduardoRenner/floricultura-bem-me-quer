@@ -84,20 +84,13 @@ function OccasionsPage() {
     <div className="min-h-screen">
       <SiteHeader />
 
-      <section className="py-14" style={{ background: "var(--gradient-hero)" }}>
-        <div className="mx-auto max-w-6xl px-4 text-center">
-          <div className="text-xs uppercase tracking-widest text-accent">Ocasiões</div>
-          <h1
-            className="mt-2 font-display text-3xl md:text-5xl"
-            style={{ color: "#CBB275" }}
-          >
-            Escolha a Ocasião Perfeita
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl" style={{ color: "#F0EDD8" }}>
-            Cada momento merece flores especiais. Selecione uma ocasião para ver nossas
-            sugestões.
-          </p>
-          <nav className="mt-6 text-xs" style={{ color: "#A5A17E" }}>
+      {/* Cabeçalho alinhado ao mesmo padrão da home: título à esquerda, sem o
+          "kicker" maiúsculo centralizado que foi removido de todo o resto do
+          site. Cores por token (text-accent etc.) em vez de hex fixo, para
+          herdar qualquer ajuste futuro de tema. */}
+      <section className="border-b border-gold/20 bg-surface-deep py-10 md:py-14">
+        <div className="mx-auto max-w-6xl px-4">
+          <nav className="text-xs text-foreground/60">
             <Link to="/" className="hover:text-accent">
               Início
             </Link>
@@ -108,38 +101,44 @@ function OccasionsPage() {
             {occasion && (
               <>
                 <span className="mx-2">›</span>
-                <span style={{ color: "#CBB275" }}>{occasion.name}</span>
+                <span className="text-accent">{occasion.name}</span>
               </>
             )}
           </nav>
+          <h1 className="mt-3 font-display text-[1.9rem] leading-tight text-accent md:text-4xl">
+            Escolha a ocasião perfeita
+          </h1>
+          <p className="mt-2 max-w-xl text-[15px] text-foreground/80">
+            Selecione um motivo e a gente mostra os arranjos certos para ele.
+          </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-12">
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+      <section className="mx-auto max-w-6xl px-4 py-8 md:py-10">
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
           {OCCASIONS.map((o) => {
             const active = selected === o.id;
             return (
               <button
                 key={o.id}
                 onClick={() => setOccasion(active ? null : o.id)}
-                className="rounded-xl p-5 text-center transition-all hover:-translate-y-0.5"
-                style={{
-                  background: active ? "#94833F" : "#222D17",
-                  border: `1px solid ${active ? "#CBB275" : "#3E4A2C"}`,
-                  color: active ? "#1D2A15" : "#F0EDD8",
-                  cursor: "pointer",
-                }}
+                className={
+                  "rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 " +
+                  (active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-card-foreground hover:border-accent")
+                }
               >
                 <o.icon
-                  className="mx-auto h-8 w-8"
+                  className={"h-7 w-7 " + (active ? "text-primary-foreground" : "text-accent")}
                   strokeWidth={1.5}
-                  style={{ color: active ? "#1D2A15" : "#CBB275" }}
                 />
                 <div className="mt-2 font-display text-base">{o.name}</div>
                 <p
-                  className="mt-1 line-clamp-2 text-xs"
-                  style={{ color: active ? "#1D2A15" : "#A5A17E" }}
+                  className={
+                    "mt-1 line-clamp-2 text-xs " +
+                    (active ? "text-primary-foreground/80" : "text-muted-foreground")
+                  }
                 >
                   {o.description}
                 </p>
@@ -149,11 +148,8 @@ function OccasionsPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-20">
-        <h2
-          className="mb-6 font-display text-2xl md:text-3xl"
-          style={{ color: "#CBB275" }}
-        >
+      <section className="mx-auto max-w-6xl px-4 pb-16 md:pb-20">
+        <h2 className="mb-6 font-display text-2xl text-accent md:text-3xl">
           {occasion ? `Sugestões para ${occasion.name}` : "Todos os produtos"}
         </h2>
         {isLoading ? (

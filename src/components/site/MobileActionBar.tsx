@@ -20,7 +20,11 @@ export function MobileActionBar() {
   // No checkout a barra atrapalha em vez de ajudar: "Pedir no WhatsApp"
   // concorre com o formulário no momento exato de fechar a compra, e o
   // carrinho já está resumido na própria página.
-  if (rota.startsWith("/checkout")) return null;
+  //
+  // No admin ela não faz sentido nenhum: quem está ali é a dona gerenciando a
+  // loja, não um cliente comprando. "Pedir no WhatsApp" e o carrinho são
+  // ruído puro sobre o painel dela.
+  if (rota.startsWith("/checkout") || rota.startsWith("/admin")) return null;
 
   return (
     <div

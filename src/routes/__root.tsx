@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -135,13 +136,20 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // MobileActionBar não renderiza em /checkout nem /admin (ver o próprio
+  // componente) — este padding tem que seguir a mesma regra, senão sobra
+  // ~68px de espaço morto no fim da página onde a barra deveria estar mas
+  // não está.
+  const reservaBarraFixa = !pathname.startsWith("/checkout") && !pathname.startsWith("/admin");
+
   return (
     <QueryClientProvider client={queryClient}>
       <CartProvider>
         {/* Espaço no rodapé para a barra fixa do celular não cobrir conteúdo.
             O FAB de WhatsApp saiu: virava sobreposição em cima de títulos e
             duplicava o que a barra fixa já faz melhor. */}
-        <div className="pb-[68px] md:pb-0">
+        <div className={reservaBarraFixa ? "pb-[68px] md:pb-0" : ""}>
           <Outlet />
         </div>
         <CartSheet />
