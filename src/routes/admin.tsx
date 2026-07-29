@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,6 +16,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Printer,
   Settings as SettingsIcon,
   ShoppingBag,
   Trash2,
@@ -246,7 +247,11 @@ type Order = {
   total: number;
   status: string;
   created_at: string;
-  items: { name: string; quantity: number }[];
+  // `price` é opcional na tipagem porque nunca foi declarado até aqui, mas o
+  // banco sempre grava (createOrder monta cada item com preço vindo do
+  // catálogo). generatePdf trata a ausência com fallback para 0 em vez de
+  // confiar cegamente.
+  items: { name: string; quantity: number; price?: number }[];
   notes: string | null;
   payment_method: string;
   delivery_address: Record<string, string> | null;
@@ -259,6 +264,43 @@ function OrdersTab({ password }: { password: string }) {
   const del = useServerFn(adminDeleteOrder);
   const [filter, setFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
+
+  const handleGeneratePdf = async (o: Order) => {
+    // Abre a aba ANTES do import dinâmico — precisa acontecer na mesma pilha
+    // síncrona do clique, senão o navegador não reconhece mais como gesto do
+    // usuário e bloqueia o pop-up (o import já é assíncrono o bastante para
+    // isso, mesmo com o chunk em cache).
+    const preview = window.open("", "_blank");
+    setGeneratingPdfId(o.id);
+    try {
+      // jsPDF + autotable pesam ~500KB — import dinâmico para não engordar o
+      // carregamento inicial do painel inteiro (dashboard, produtos,
+      // configurações) por causa de um botão que a maioria das sessões nunca
+      // clica.
+      const { printOrderPdf } = await import("@/lib/orderPdf");
+      await printOrderPdf(
+        {
+          orderNumber: o.order_number,
+          createdAt: o.created_at,
+          status: o.status,
+          paymentMethod: o.payment_method,
+          deliveryType: o.delivery_type,
+          deliveryAddress: o.delivery_address,
+          customerName: o.customer_name,
+          customerPhone: o.customer_phone,
+          notes: o.notes,
+          items: o.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price ?? 0 })),
+          total: Number(o.total),
+        },
+        preview,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar PDF");
+    } finally {
+      setGeneratingPdfId(null);
+    }
+  };
 
   const { data: orders } = useQuery({
     queryKey: ["admin-orders"],
@@ -330,9 +372,8 @@ function OrdersTab({ password }: { password: string }) {
               </tr>
             )}
             {filtered.map((o) => (
-              <>
+              <Fragment key={o.id}>
                 <tr
-                  key={o.id}
                   onClick={() => setExpanded(expanded === o.id ? null : o.id)}
                   className="cursor-pointer border-t border-border hover:bg-muted/40"
                 >
@@ -401,7 +442,20 @@ function OrdersTab({ password }: { password: string }) {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="mt-4 border-t border-border/60 pt-3">
+                          <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={generatingPdfId === o.id}
+                              onClick={() => handleGeneratePdf(o)}
+                            >
+                              {generatingPdfId === o.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Printer className="mr-2 h-4 w-4" />
+                              )}
+                              {generatingPdfId === o.id ? "Gerando…" : "Gerar PDF"}
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -426,7 +480,7 @@ function OrdersTab({ password }: { password: string }) {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
