@@ -1,3 +1,4 @@
+import { useRouterState } from "@tanstack/react-router";
 import { MessageCircle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { formatBRL, WHATSAPP_URL } from "@/lib/shop";
@@ -13,7 +14,13 @@ import { formatBRL, WHATSAPP_URL } from "@/lib/shop";
  */
 export function MobileActionBar() {
   const { count, subtotal, setOpen } = useCart();
+  const rota = useRouterState({ select: (s) => s.location.pathname });
   const temItens = count > 0;
+
+  // No checkout a barra atrapalha em vez de ajudar: "Pedir no WhatsApp"
+  // concorre com o formulário no momento exato de fechar a compra, e o
+  // carrinho já está resumido na própria página.
+  if (rota.startsWith("/checkout")) return null;
 
   return (
     <div

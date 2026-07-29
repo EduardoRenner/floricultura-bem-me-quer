@@ -194,8 +194,18 @@ function Home() {
           conforme o horário — nunca promete hoje fora da janela real. */}
       <div className="border-y border-gold/25 bg-secondary/40">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2.5 px-4 py-3.5 text-[13px] text-foreground/80">
-          <span className="inline-flex items-center gap-2 font-medium text-accent">
-            <Truck className="h-4 w-4" /> {entrega.curto}
+          {/* Sem previsão publicada, a faixa não repete o aviso que já está no
+              hero logo acima — mostra a área atendida. Com previsão, aí sim
+              vale repetir: é informação nova e perecível. */}
+          <span
+            className={
+              entrega.kind === "previsao"
+                ? "inline-flex items-center gap-2 font-medium text-accent"
+                : "inline-flex items-center gap-2"
+            }
+          >
+            <Truck className="h-4 w-4 text-accent" />
+            {entrega.kind === "previsao" ? entrega.curto : "Entrega em Maravilha"}
           </span>
           <span className="inline-flex items-center gap-2">
             <Store className="h-4 w-4 text-accent" /> Retirada na loja

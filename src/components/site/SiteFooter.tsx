@@ -2,7 +2,7 @@ import { Facebook, Instagram, MapPin, Phone } from "lucide-react";
 import {
   ADDRESS,
   FACEBOOK_URL,
-  HOURS,
+
   INSTAGRAM_URL,
   PHONE_DISPLAY,
   PHONE_TEL,
@@ -75,12 +75,18 @@ export function SiteFooter() {
 
         <div>
           <h4 className="font-display text-lg text-foreground">Horários</h4>
-          <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-            <li>Seg a Sex: 08:00–11:30 / 13:00–18:30</li>
-            <li>Sábado: 08:00–12:00</li>
-            <li>Domingo: Fechado</li>
-          </ul>
-          {HOURS.length === 0 && null}
+          {/* Os horários vêm das configurações e são editáveis no painel.
+              Repeti-los aqui fixos criaria divergência silenciosa: a dona
+              mudaria no painel e o rodapé seguiria mostrando o antigo. */}
+          <p className="mt-3 text-sm text-muted-foreground">
+            Atendemos de segunda a sábado, com intervalo no almoço.
+          </p>
+          <a
+            href="/#horarios"
+            className="mt-2 inline-block text-sm text-primary hover:underline"
+          >
+            Ver horários completos
+          </a>
         </div>
 
         <div>
