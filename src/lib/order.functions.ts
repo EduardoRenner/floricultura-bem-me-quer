@@ -5,7 +5,9 @@ import { createServerFn } from "@tanstack/react-start";
 // valida/recalcula o total e gera o número do pedido) e devolve o número
 // sequencial gerado — assim o número no WhatsApp bate com o do dashboard.
 
-type OrderItem = { id?: string; name: string; quantity: number; price: number };
+// O cliente diz O QUE quer e QUANTO quer. Nunca quanto custa.
+// `name` e `price` são aceitos no payload por compatibilidade, mas ignorados.
+type OrderItemInput = { id?: string; name?: string; quantity: number; price?: number };
 
 type CreateOrderInput = {
   customer_name: string;
@@ -17,20 +19,78 @@ type CreateOrderInput = {
   delivery_time?: string | null;
   payment_method: string; // 'pix' | 'dinheiro' | 'cartao'
   notes?: string | null;
-  items: OrderItem[];
+  items: OrderItemInput[];
 };
+
+// A taxa entra como item para o total do trigger (soma dos itens) bater com o
+// total exibido. O rótulo precisa continuar exatamente assim: `adminStats`
+// filtra por ele para não contar a taxa como produto vendido.
+const DELIVERY_FEE_LABEL = "Taxa de entrega";
+// Usada só se a setting `delivery_fee` sumir ou vier inválida — nunca deixa o
+// pedido sair sem taxa por causa de configuração faltando.
+const DELIVERY_FEE_FALLBACK = 15;
 
 export const createOrder = createServerFn({ method: "POST" })
   .inputValidator((data: CreateOrderInput) => data)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Sanidade básica (o trigger no banco faz a validação forte + recalcula total)
     if (!Array.isArray(data.items) || data.items.length === 0) {
       throw new Error("Pedido sem itens");
     }
     if (!data.customer_name?.trim() || !data.customer_phone?.trim()) {
       throw new Error("Nome e telefone são obrigatórios");
+    }
+    if (data.delivery_type !== "delivery" && data.delivery_type !== "pickup") {
+      throw new Error("Tipo de entrega inválido");
+    }
+
+    // Consolida por id: se o mesmo produto vier repetido, soma as quantidades
+    // em vez de virar duas linhas no pedido.
+    const wanted = new Map<string, number>();
+    for (const it of data.items) {
+      const id = typeof it?.id === "string" ? it.id.trim() : "";
+      if (!id) throw new Error("Item de pedido inválido");
+      const qty = Math.floor(Number(it?.quantity));
+      if (!Number.isFinite(qty) || qty <= 0 || qty > 999) {
+        throw new Error("Quantidade inválida");
+      }
+      wanted.set(id, (wanted.get(id) ?? 0) + qty);
+    }
+    if (wanted.size > 100) throw new Error("Pedido com itens demais");
+
+    // O PONTO CENTRAL: nome e preço vêm do catálogo, nunca do payload.
+    // Sem isto, quem editasse o carrinho no localStorage escolheria o próprio
+    // preço — o trigger no banco recalcula o total, mas a partir dos preços
+    // que ele recebe, então sozinho ele não protege contra adulteração.
+    const { data: rows, error: prodError } = await supabaseAdmin
+      .from("products")
+      .select("id,name,price,active")
+      .in("id", [...wanted.keys()]);
+    // Mensagem genérica: é endpoint público, não devolve detalhe interno do banco.
+    if (prodError) throw new Error("Não foi possível validar os itens do pedido");
+
+    const items: { id?: string; name: string; quantity: number; price: number }[] = [];
+    for (const [id, quantity] of wanted) {
+      const p = (rows ?? []).find((r) => r.id === id);
+      // Produto inativo cai aqui junto com inexistente: se saiu do catálogo,
+      // não pode ser comprado por quem tinha a página aberta.
+      if (!p || !p.active) throw new Error("Produto indisponível no catálogo");
+      items.push({ id, name: p.name, quantity, price: Number(p.price) });
+    }
+
+    if (data.delivery_type === "delivery") {
+      const { data: setting } = await supabaseAdmin
+        .from("settings")
+        .select("value")
+        .eq("key", "delivery_fee")
+        .maybeSingle();
+      const fee = Number(setting?.value);
+      items.push({
+        name: DELIVERY_FEE_LABEL,
+        quantity: 1,
+        price: Number.isFinite(fee) && fee >= 0 ? fee : DELIVERY_FEE_FALLBACK,
+      });
     }
 
     const { data: row, error } = await supabaseAdmin
@@ -46,12 +106,18 @@ export const createOrder = createServerFn({ method: "POST" })
         payment_method: data.payment_method,
         notes: data.notes?.slice(0, 2000) || null,
         status: "pendente",
-        total: 0, // recalculado pelo trigger a partir dos itens
-        items: data.items,
+        total: 0, // recalculado pelo trigger a partir dos itens acima
+        items,
       })
       .select("order_number")
       .single();
 
     if (error) throw new Error(error.message);
-    return { orderNumber: (row?.order_number as string) ?? null };
+    // Devolve os itens já precificados pelo servidor para o checkout montar a
+    // mensagem do WhatsApp com os valores que realmente foram gravados.
+    return {
+      orderNumber: (row?.order_number as string) ?? null,
+      items,
+      total: items.reduce((s, i) => s + i.price * i.quantity, 0),
+    };
   });

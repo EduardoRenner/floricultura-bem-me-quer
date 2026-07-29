@@ -105,18 +105,20 @@ function CheckoutPage() {
     // se o salvamento falhar, usamos este como fallback (cliente nunca trava).
     let orderNumber = "BMQ-" + Date.now().toString().slice(-6);
 
-    // Total = produtos + taxa de entrega (quando houver)
+    // Total estimado, só para exibir se o salvamento falhar. O número que vale
+    // é o que o servidor devolve, calculado com os preços do catálogo.
     const productsTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    const recalculatedTotal = productsTotal + (deliveryType === "delivery" ? deliveryFee : 0);
+    let finalTotal = productsTotal + (deliveryType === "delivery" ? deliveryFee : 0);
+    let finalLines = items.map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      price: i.price,
+    }));
 
-    // Itens que vão para o banco. Incluímos a taxa de entrega como item para que
-    // o total calculado pelo trigger (soma dos itens) bata com o total mostrado.
-    const dbItems: { id?: string; name: string; quantity: number; price: number }[] = items.map(
-      (i) => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price }),
-    );
-    if (deliveryType === "delivery") {
-      dbItems.push({ name: "Taxa de entrega", quantity: 1, price: deliveryFee });
-    }
+    // Enviamos apenas o que o cliente legitimamente escolhe: qual produto e
+    // quantos. Preço, nome e taxa de entrega são resolvidos no servidor a
+    // partir do catálogo e das configurações.
+    const dbItems = items.map((i) => ({ id: i.id, quantity: i.quantity }));
 
     // Abre a aba do WhatsApp já dentro do clique (evita bloqueio de popup);
     // a URL é definida depois que o pedido é salvo.
@@ -141,12 +143,19 @@ function CheckoutPage() {
         },
       });
       if (res?.orderNumber) orderNumber = res.orderNumber;
+      // Passa a usar o que foi realmente gravado, para a mensagem do WhatsApp
+      // não divergir do pedido no painel.
+      if (typeof res?.total === "number") finalTotal = res.total;
+      if (Array.isArray(res?.items)) {
+        // A taxa vai numa linha própria mais abaixo, não junto dos produtos.
+        finalLines = res.items.filter((i) => i.name !== "Taxa de entrega");
+      }
     } catch (err) {
       console.error("Falha ao salvar o pedido:", err);
     }
 
     // Mensagem do WhatsApp — texto limpo, sem símbolos que aparecem como "?"
-    const itemLines = items
+    const itemLines = finalLines
       .map((i) => `  - ${i.quantity}x ${i.name} — ${formatBRL(i.price * i.quantity)}`)
       .join("\n");
 
@@ -177,7 +186,7 @@ function CheckoutPage() {
       paymentLine,
       notesLine,
       ``,
-      `*Total: ${formatBRL(recalculatedTotal)}*`,
+      `*Total: ${formatBRL(finalTotal)}*`,
       ``,
       `Pedido feito pelo site — Floricultura Bem Me Quer`,
     ]

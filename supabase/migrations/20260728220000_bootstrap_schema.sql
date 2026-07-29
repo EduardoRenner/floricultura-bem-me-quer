@@ -332,6 +332,11 @@ GRANT ALL ON public.settings             TO service_role;
 GRANT ALL ON public.admin_login_attempts TO service_role;
 GRANT ALL ON public.admin_audit_log      TO service_role;
 
+-- Sem isto o checkout quebra por inteiro: o trigger validate_new_order chama
+-- nextval('order_number_seq') e roda como quem inseriu — o service_role, que
+-- e por onde createOrder grava. Um GRANT em `orders` nao cobre a sequencia.
+GRANT ALL ON SEQUENCE public.order_number_seq TO service_role;
+
 REVOKE ALL ON FUNCTION public.verify_admin_login(text, text)      FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.set_admin_password(text)            FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.log_admin_action(TEXT, JSONB, TEXT) FROM PUBLIC, anon, authenticated;
