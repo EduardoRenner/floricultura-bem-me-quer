@@ -20,6 +20,20 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Vercel
+.vercel
+
+# O lockfile do projeto é bun.lock. package-lock.json aparece se alguém rodar
+# `npm install` sem ter bun instalado — commitar os dois deixa a detecção de
+# gerenciador de pacotes da Vercel ambígua.
+package-lock.json
+
+# Secrets — o .env local guarda a SUPABASE_SERVICE_ROLE_KEY e nunca pode ser
+# commitado. Use .env.example como referência do que precisa ser preenchido.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

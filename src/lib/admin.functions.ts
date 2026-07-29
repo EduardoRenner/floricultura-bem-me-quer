@@ -1,22 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 
-// IP do cliente para o rate limiting. Em produção o app roda num Cloudflare
-// Worker, que define `cf-connecting-ip` de forma confiável (o cliente não
-// consegue forjar). Fallback para o primeiro hop de x-forwarded-for.
+// getClientIp mora em request.server.ts: ele importa
+// `@tanstack/react-start/server`, que a import-protection do Vite bloqueia se
+// aparecer no grafo do cliente (routes/admin.tsx importa este arquivo).
 async function getClientIp(): Promise<string> {
-  try {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const headers = getRequest()?.headers;
-    if (!headers) return "unknown";
-    return (
-      headers.get("cf-connecting-ip") ||
-      headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      headers.get("x-real-ip") ||
-      "unknown"
-    );
-  } catch {
-    return "unknown";
-  }
+  const { getClientIp: impl } = await import("@/lib/request.server");
+  return impl();
 }
 
 async function verifyAdmin(password: string) {
@@ -37,6 +26,41 @@ async function verifyAdmin(password: string) {
   }
   if (data !== "ok") throw new Error("Senha incorreta");
   return supabaseAdmin;
+}
+
+type AdminClient = Awaited<ReturnType<typeof verifyAdmin>>;
+
+// Settings hoje sao config da loja (telefone, taxa de entrega...), nada secreto.
+// Isto e uma rede de seguranca para o dia em que alguem cadastrar uma chave de
+// API como setting: o audit log registra o nome, nunca o valor.
+function isSensitiveSettingKey(key: string): boolean {
+  return /senha|password|secret|token|api[_-]?key/i.test(key);
+}
+
+// Registra uma acao do admin no audit log (migration 20260728120000).
+//
+// Falha SEMPRE em silencio, de proposito: enquanto a migration nao estiver
+// aplicada a RPC nem existe, e um erro aqui nao pode impedir o admin de
+// trabalhar. O log e para rastreabilidade, nao e um controle de acesso.
+//
+// Chamar sempre DEPOIS da operacao dar certo, para o log nao registrar
+// escrita que na verdade falhou.
+async function logAdminAction(
+  admin: AdminClient,
+  action: string,
+  details?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const { error } = await admin.rpc("log_admin_action", {
+      _action: action,
+      _details: (details ?? null) as never,
+      _ip: await getClientIp(),
+    });
+    // Mensagem sem `details` — o proprio payload pode conter dado do cliente.
+    if (error) console.warn(`[audit] nao registrou "${action}": ${error.message}`);
+  } catch {
+    console.warn(`[audit] nao registrou "${action}"`);
+  }
 }
 
 export const adminLogin = createServerFn({ method: "POST" })
@@ -65,6 +89,7 @@ export const adminUpdateOrderStatus = createServerFn({ method: "POST" })
     const admin = await verifyAdmin(data.password);
     const { error } = await admin.from("orders").update({ status: data.status }).eq("id", data.id);
     if (error) throw new Error(error.message);
+    await logAdminAction(admin, "order.update_status", { id: data.id, status: data.status });
     return { ok: true as const };
   });
 
@@ -72,8 +97,22 @@ export const adminDeleteOrder = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string; id: string }) => data)
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
+    // Le o numero do pedido antes de apagar: depois do delete o id vira uma
+    // referencia morta, e o numero e o que identifica o pedido pra loja.
+    const { data: before } = await admin
+      .from("orders")
+      .select("order_number,customer_name,total")
+      .eq("id", data.id)
+      .maybeSingle();
+
     const { error } = await admin.from("orders").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    await logAdminAction(admin, "order.delete", {
+      id: data.id,
+      order_number: before?.order_number ?? null,
+      customer_name: before?.customer_name ?? null,
+      total: before?.total ?? null,
+    });
     return { ok: true as const };
   });
 
@@ -137,6 +176,13 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
       ({ error } = await run(base));
     }
     if (error) throw new Error(error.message);
+    await logAdminAction(admin, p.id ? "product.update" : "product.create", {
+      id: p.id ?? null,
+      name: p.name,
+      price: p.price,
+      category: p.category,
+      active: p.active,
+    });
     return { ok: true as const };
   });
 
@@ -180,8 +226,19 @@ export const adminDeleteProduct = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string; id: string }) => data)
   .handler(async ({ data }) => {
     const admin = await verifyAdmin(data.password);
+    // Mesmo motivo do delete de pedido: guarda o nome antes de o registro sumir.
+    const { data: before } = await admin
+      .from("products")
+      .select("name")
+      .eq("id", data.id)
+      .maybeSingle();
+
     const { error } = await admin.from("products").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    await logAdminAction(admin, "product.delete", {
+      id: data.id,
+      name: before?.name ?? null,
+    });
     return { ok: true as const };
   });
 
@@ -206,6 +263,8 @@ export const adminUpdateSetting = createServerFn({ method: "POST" })
       if (newPw.length < 8) throw new Error("Senha muito curta (mínimo 8 caracteres)");
       const { error } = await admin.rpc("set_admin_password", { _new_password: newPw });
       if (error) throw new Error(error.message);
+      // Registra que a senha mudou, nunca o valor dela.
+      await logAdminAction(admin, "settings.change_admin_password");
       return { ok: true as const };
     }
     const { error } = await admin
@@ -213,13 +272,19 @@ export const adminUpdateSetting = createServerFn({ method: "POST" })
       .update({ value: data.value as never })
       .eq("key", data.key);
     if (error) throw new Error(error.message);
+    await logAdminAction(admin, "settings.update", {
+      key: data.key,
+      // Guarda o valor porque saber "de quanto pra quanto" e o ponto do log —
+      // mas se um dia entrar uma setting de token/segredo, so o nome vai.
+      value: isSensitiveSettingKey(data.key) ? "[omitido]" : data.value,
+    });
     return { ok: true as const };
   });
 
 // Brasil é UTC-3 e não observa horário de verão desde 2019.
-// O app roda num Cloudflare Worker (UTC), então convertemos os timestamps
-// para o horário de São Paulo antes de extrair dia/mês/hora, senão pedidos
-// do fim da noite cairiam no dia seguinte.
+// O servidor roda em UTC (tanto na Vercel quanto no preview do Lovable), então
+// convertemos os timestamps para o horário de São Paulo antes de extrair
+// dia/mês/hora, senão pedidos do fim da noite cairiam no dia seguinte.
 const SP_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 // Instante UTC correspondente à meia-noite (SP) de hoje / início do mês / do ano.

@@ -154,6 +154,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      // Vem da migration 20260728120000_admin_audit_log.sql. Adicionada a mao
+      // porque este arquivo ainda foi gerado antes de ela ser aplicada no
+      // banco — ao rodar a geracao de tipos de novo, esta entrada reaparece
+      // sozinha e este comentario pode sair.
+      log_admin_action: {
+        Args: { _action: string; _details?: Json | null; _ip?: string | null }
+        Returns: undefined
+      }
       set_admin_password: {
         Args: { _new_password: string }
         Returns: undefined
