@@ -8,6 +8,41 @@ export const ADDRESS = "Av. Anita Garibaldi, 266 - Centro, Maravilha - SC, 89874
 export const MAPS_EMBED =
   "https://maps.google.com/maps?q=Av.+Anita+Garibaldi,+266,+Centro,+Maravilha,+SC,+89874-000&output=embed";
 
+/**
+ * Pede ao Cloudinary a imagem já no tamanho em que ela vai ser exibida.
+ *
+ * As fotos do catálogo são servidas em 1234x1600 e renderizadas em ~260px de
+ * largura — baixar o original é desperdício puro de banda no celular.
+ *
+ * Só mexe em URLs do Cloudinary. As URLs assinadas do Supabase Storage têm
+ * token na query e qualquer mudança no caminho invalidaria a assinatura, então
+ * elas (e qualquer outra origem) passam intactas.
+ */
+export function productImageUrl(
+  url: string | null | undefined,
+  width: number,
+): string | undefined {
+  if (!url) return undefined;
+  const marker = "/image/upload/";
+  const at = url.indexOf(marker);
+  if (!url.includes("res.cloudinary.com") || at < 0) return url;
+
+  const head = url.slice(0, at + marker.length);
+  const tail = url.slice(at + marker.length);
+  const [first, ...rest] = tail.split("/");
+
+  // Já tem largura definida: respeita o que está lá.
+  if (/(^|,)w_\d+(,|$)/.test(first)) return url;
+
+  // O primeiro trecho depois de /upload/ pode ser uma transformação
+  // (`f_auto,q_auto`) ou já o id do arquivo. Se for transformação, entra junto;
+  // se não, vira um trecho novo antes do id.
+  const isTransform = /^[a-z]{1,3}_[^/]*$/.test(first);
+  return isTransform
+    ? `${head}${first},w_${width}/${rest.join("/")}`
+    : `${head}w_${width}/${tail}`;
+}
+
 export function formatBRL(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",

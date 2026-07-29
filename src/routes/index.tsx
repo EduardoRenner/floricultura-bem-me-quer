@@ -207,7 +207,7 @@ function Home() {
           </div>
 
           {isLoading ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-96 rounded-2xl" />
               ))}
@@ -217,7 +217,7 @@ function Home() {
               Nenhum produto nesta categoria no momento.
             </p>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
               {filtered.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}

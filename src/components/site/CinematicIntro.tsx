@@ -15,11 +15,14 @@ export function CinematicIntro() {
       return;
     }
     setVisible(true);
-    const t1 = window.setTimeout(() => setFadingOut(true), 2800);
+    // Eram 2800ms + 500ms de fade. Quem chega pelo WhatsApp querendo comprar
+    // encarava 3,3s de tela cheia antes de ver a loja — atrito no momento de
+    // maior intenção de compra. Encurtado para ~1,6s no total.
+    const t1 = window.setTimeout(() => setFadingOut(true), 1200);
     const t2 = window.setTimeout(() => {
       sessionStorage.setItem("intro_seen", "true");
       setVisible(false);
-    }, 3300);
+    }, 1600);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
@@ -136,7 +139,9 @@ export function CinematicIntro() {
             style={{
               display: "inline-block",
               opacity: 0,
-              animation: `introLetterIn 0.4s ease-out ${0.6 + i * 0.05}s forwards`,
+              // Escalonamento acompanha o novo tempo da intro: a última letra
+              // precisa entrar antes do fade começar (1,2s).
+              animation: `introLetterIn 0.3s ease-out ${0.25 + i * 0.02}s forwards`,
               whiteSpace: "pre",
             }}
           >
@@ -152,7 +157,7 @@ export function CinematicIntro() {
           color: "#F0EDD8",
           fontSize: "1rem",
           opacity: 0,
-          animation: "introFadeUp 0.6s ease-out 1.2s forwards",
+          animation: "introFadeUp 0.4s ease-out 0.75s forwards",
         }}
       >
         Flores que falam pelo coração
@@ -161,15 +166,19 @@ export function CinematicIntro() {
       <button
         onClick={skip}
         style={{
+          // Antes era 0.75rem num canto escuro: praticamente ninguém achava.
+          // Agora fica centralizado, com área de toque de 44px.
           position: "absolute",
-          bottom: 20,
-          right: 20,
+          bottom: 32,
+          left: "50%",
+          transform: "translateX(-50%)",
           background: "transparent",
-          border: "1px solid #3E4A2C",
-          color: "#A5A17E",
-          fontSize: "0.75rem",
-          padding: "6px 12px",
-          borderRadius: 20,
+          border: "1px solid #94833F",
+          color: "#CBB275",
+          fontSize: "0.875rem",
+          padding: "12px 28px",
+          minHeight: 44,
+          borderRadius: 24,
           cursor: "pointer",
           fontFamily: "'Raleway', sans-serif",
         }}

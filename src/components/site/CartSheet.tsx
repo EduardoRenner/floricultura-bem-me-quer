@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
-import { formatBRL } from "@/lib/shop";
+import { formatBRL, productImageUrl } from "@/lib/shop";
 
 export function CartSheet() {
   const { items, open, setOpen, setQty, remove, subtotal } = useCart();
@@ -40,8 +40,11 @@ export function CartSheet() {
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
                       {item.image_url && (
                         <img
-                          src={item.image_url}
+                          // miniatura de 64px
+                          src={productImageUrl(item.image_url, 160)}
                           alt={item.name}
+                          loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-cover"
                         />
                       )}

@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatBRL } from "@/lib/shop";
+import { formatBRL, productImageUrl } from "@/lib/shop";
 import { useCart } from "@/lib/cart";
 import type { Product } from "@/components/site/ProductCard";
 
@@ -185,8 +185,10 @@ export function SurpriseMeButton({
             </button>
             {picked.image_url ? (
               <img
-                src={picked.image_url}
+                // exibida a 144px
+                src={productImageUrl(picked.image_url, 320)}
                 alt={picked.name}
+                decoding="async"
                 className="mx-auto h-36 w-36 rounded-lg object-cover"
               />
             ) : (
