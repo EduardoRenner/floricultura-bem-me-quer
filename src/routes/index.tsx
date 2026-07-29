@@ -112,7 +112,10 @@ function Home() {
           útil. Quem chega quer ver flor, não animação. */}
       <section className="relative overflow-hidden" style={{ background: "var(--surface-deep)" }}>
         <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-20">
-          <div className="order-2 md:order-1">
+          {/* Texto primeiro no empilhamento. Antes a foto vinha antes e, entre
+              ~640 e 768px, ocupava 74% da primeira tela — o título e os botões
+              caíam abaixo da dobra e a pessoa via só a foto. */}
+          <div className="order-1">
             <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
               <Flower2 className="h-3.5 w-3.5" /> Maravilha · Santa Catarina
             </span>
@@ -177,8 +180,12 @@ function Home() {
 
           {/* Foto real de produto. Fixa de propósito: carrega junto com o HTML,
               sem esperar a consulta ao catálogo, então não há salto de layout. */}
-          <div className="order-1 md:order-2">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl md:aspect-[4/4.4]">
+          <div className="order-2">
+            {/* Altura limitada no empilhamento: como coluna única a proporção
+                4/3 crescia junto com a largura e engolia a dobra. Só a partir
+                de md, quando a foto vai para a coluna ao lado, ela volta a
+                usar proporção. */}
+            <div className="relative h-[230px] overflow-hidden rounded-2xl sm:h-[300px] md:h-auto md:aspect-[4/4.4]">
               <img
                 src={productImageUrl(HERO_IMAGE, 900)}
                 alt="Ramalhete de girassóis da Floricultura Bem Me Quer"
