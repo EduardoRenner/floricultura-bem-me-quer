@@ -57,6 +57,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/shop";
 import { OCCASIONS } from "@/lib/occasions";
+import { DIAS_LONGOS, HORARIOS_PADRAO, type DiaHorario } from "@/lib/delivery";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -789,6 +790,10 @@ function SettingsTab({ password }: { password: string }) {
   const [fee, setFee] = useState<string>("");
   const [min, setMin] = useState<string>("");
   const [override, setOverride] = useState<string>("auto");
+  const [sameDay, setSameDay] = useState(true);
+  const [cutoff, setCutoff] = useState<string>("16:00");
+  const [note, setNote] = useState<string>("");
+  const [horarios, setHorarios] = useState<DiaHorario[]>(HORARIOS_PADRAO);
 
   useEffect(() => {
     if (!rows) return;
@@ -796,8 +801,49 @@ function SettingsTab({ password }: { password: string }) {
     setMin(String(map.get("minimum_order") ?? ""));
     const o = map.get("shop_open_override");
     setOverride(o === true ? "open" : o === false ? "closed" : "auto");
+    setSameDay(map.get("delivery_same_day") !== false);
+    setCutoff(String(map.get("delivery_cutoff") ?? "16:00"));
+    setNote(String(map.get("delivery_note") ?? ""));
+    const h = map.get("business_hours");
+    if (Array.isArray(h) && h.length) setHorarios(h as DiaHorario[]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
+
+  // Edita uma ponta de uma faixa (abertura ou fechamento) de um dia.
+  const editarFaixa = (dia: number, idx: number, ponta: 0 | 1, valor: string) =>
+    setHorarios((prev) =>
+      prev.map((d) =>
+        d.dia !== dia
+          ? d
+          : {
+              ...d,
+              faixas: d.faixas.map((f, i) =>
+                i !== idx ? f : ((ponta === 0 ? [valor, f[1]] : [f[0], valor]) as [string, string]),
+              ),
+            },
+      ),
+    );
+
+  const alternarDia = (dia: number, aberto: boolean) =>
+    setHorarios((prev) =>
+      prev.map((d) =>
+        d.dia !== dia
+          ? d
+          : { ...d, faixas: aberto ? [["08:00", "18:00"] as [string, string]] : [] },
+      ),
+    );
+
+  const addFaixa = (dia: number) =>
+    setHorarios((prev) =>
+      prev.map((d) =>
+        d.dia !== dia ? d : { ...d, faixas: [...d.faixas, ["13:00", "18:00"] as [string, string]] },
+      ),
+    );
+
+  const removerFaixa = (dia: number, idx: number) =>
+    setHorarios((prev) =>
+      prev.map((d) => (d.dia !== dia ? d : { ...d, faixas: d.faixas.filter((_, i) => i !== idx) })),
+    );
 
   const save = useMutation({
     mutationFn: (v: { key: string; value: unknown }) =>
@@ -859,16 +905,129 @@ function SettingsTab({ password }: { password: string }) {
             </Button>
           </div>
         </div>
+        {/* ENTREGA NO MESMO DIA */}
         <div className="rounded-2xl border border-border bg-card p-6">
-          <Label>Horários de funcionamento</Label>
-          <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-            <div>Seg a Sex: 08:00–11:30 / 13:00–18:30</div>
-            <div>Sábado: 08:00–12:00</div>
-            <div>Domingo: Fechado</div>
-            <p className="mt-2 text-xs">
-              Para alterar os horários, entre em contato com o suporte.
-            </p>
+          <Label className="text-base">Entrega no mesmo dia</Label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Desligue em dia cheio. O site deixa de prometer entrega hoje na hora, sem precisar
+            de ninguém mexer no código.
+          </p>
+
+          <div className="mt-4 flex items-center gap-3">
+            <Switch checked={sameDay} onCheckedChange={setSameDay} />
+            <span className="text-sm">
+              {sameDay ? "Aceitando pedidos para hoje" : "Não estamos entregando hoje"}
+            </span>
           </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs">Pedidos até</Label>
+              <Input
+                type="time"
+                value={cutoff}
+                onChange={(e) => setCutoff(e.target.value)}
+                disabled={!sameDay}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Depois desse horário o site passa a anunciar a próxima entrega.
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">Observação (opcional)</Label>
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Ex.: Centro e bairros próximos"
+              />
+            </div>
+          </div>
+
+          <Button
+            className="mt-4"
+            onClick={async () => {
+              await save.mutateAsync({ key: "delivery_same_day", value: sameDay });
+              await save.mutateAsync({ key: "delivery_cutoff", value: cutoff });
+              await save.mutateAsync({ key: "delivery_note", value: note });
+            }}
+          >
+            Salvar entrega
+          </Button>
+        </div>
+
+        {/* HORÁRIOS */}
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <Label className="text-base">Horários de funcionamento</Label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Aparecem no site e definem quando a entrega no mesmo dia ainda é possível.
+          </p>
+
+          <div className="mt-4 space-y-3">
+            {[1, 2, 3, 4, 5, 6, 0].map((dia) => {
+              const d = horarios.find((x) => x.dia === dia) ?? { dia, faixas: [] };
+              const aberto = d.faixas.length > 0;
+              return (
+                <div key={dia} className="rounded-lg border border-border/60 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium">{DIAS_LONGOS[dia]}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {aberto ? "Aberto" : "Fechado"}
+                      </span>
+                      <Switch
+                        checked={aberto}
+                        onCheckedChange={(v) => alternarDia(dia, v)}
+                      />
+                    </div>
+                  </div>
+
+                  {aberto && (
+                    <div className="mt-3 space-y-2">
+                      {d.faixas.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Input
+                            type="time"
+                            value={f[0]}
+                            onChange={(e) => editarFaixa(dia, i, 0, e.target.value)}
+                            className="w-32"
+                          />
+                          <span className="text-muted-foreground">às</span>
+                          <Input
+                            type="time"
+                            value={f[1]}
+                            onChange={(e) => editarFaixa(dia, i, 1, e.target.value)}
+                            className="w-32"
+                          />
+                          {d.faixas.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removerFaixa(dia, i)}
+                              aria-label="Remover faixa"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      {d.faixas.length < 2 && (
+                        <Button variant="outline" size="sm" onClick={() => addFaixa(dia)}>
+                          <Plus className="mr-1 h-3.5 w-3.5" /> Intervalo de almoço
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <Button
+            className="mt-4"
+            onClick={() => save.mutate({ key: "business_hours", value: horarios })}
+          >
+            Salvar horários
+          </Button>
         </div>
       </div>
     </div>

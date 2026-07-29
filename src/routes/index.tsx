@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { listPublicProducts } from "@/lib/products.functions";
+import { getPublicSettings } from "@/lib/settings.functions";
+import { DIAS_LONGOS } from "@/lib/delivery";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ProductCard, type Product } from "@/components/site/ProductCard";
@@ -29,16 +31,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ADDRESS,
-  HOURS,
   MAPS_EMBED,
   PHONE_DISPLAY,
   PHONE_TEL,
   WHATSAPP_URL,
-  isOpenNow,
   productImageUrl,
 } from "@/lib/shop";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({
+  // Loader em vez de useQuery: o prazo de entrega é uma promessa comercial e
+  // precisa vir pronto no HTML. Buscado no cliente, a faixa piscaria com o
+  // texto errado antes de corrigir.
+  loader: () => getPublicSettings(),
+  component: Home,
+});
 
 const CATEGORIES = ["Todos", "Rosas", "Arranjos", "Presentes", "Plantas"];
 
@@ -79,6 +85,7 @@ const REVIEWS = [
 
 function Home() {
   const [category, setCategory] = useState("Todos");
+  const { status: entrega, entrega: cfgEntrega, abertoAgora, horarios } = Route.useLoaderData();
   const fetchProducts = useServerFn(listPublicProducts);
 
   const { data: products, isLoading } = useQuery({
@@ -94,8 +101,6 @@ function Home() {
     if (category === "Todos") return products;
     return products.filter((p) => p.category === category);
   }, [products, category]);
-
-  const openNow = isOpenNow();
 
   return (
     <div className="min-h-screen">
@@ -144,8 +149,19 @@ function Home() {
               </a>
             </div>
 
+            {/* Prazo real, calculado no servidor. É a informação que mais
+                pesa na decisão de comprar flor — e a que mais some quando
+                fica escrita fixa no código. */}
+            <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-gold/35 bg-secondary/50 px-3.5 py-2.5 text-[13px] md:text-sm">
+              <Truck className="h-4 w-4 shrink-0 text-accent" />
+              <span className={entrega.kind === "hoje" ? "text-accent" : "text-foreground/85"}>
+                {entrega.texto}
+                {cfgEntrega.note ? ` · ${cfgEntrega.note}` : ""}
+              </span>
+            </div>
+
             {/* Prova social concreta em vez de selo genérico */}
-            <div className="mt-7 flex items-center gap-2.5 text-sm text-foreground/75">
+            <div className="mt-6 flex items-center gap-2.5 text-sm text-foreground/75">
               <span className="flex">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <Star key={i} className="h-4 w-4 fill-accent text-accent" />
@@ -172,18 +188,19 @@ function Home() {
         </div>
       </section>
 
-      {/* Faixa de confiança — só afirmações verificáveis */}
+      {/* Faixa de confiança. O prazo vem calculado do servidor e muda sozinho
+          conforme o horário — nunca promete hoje fora da janela real. */}
       <div className="border-y border-gold/25 bg-secondary/40">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2.5 px-4 py-3.5 text-[13px] text-foreground/80">
-          <span className="inline-flex items-center gap-2">
-            <Truck className="h-4 w-4 text-accent" /> Entrega em Maravilha
+          <span className="inline-flex items-center gap-2 font-medium text-accent">
+            <Truck className="h-4 w-4" /> {entrega.curto}
           </span>
           <span className="inline-flex items-center gap-2">
             <Store className="h-4 w-4 text-accent" /> Retirada na loja
           </span>
           <span className="inline-flex items-center gap-2">
             <Clock className="h-4 w-4 text-accent" />
-            {openNow ? "Aberto agora" : "Fechado agora"}
+            {abertoAgora ? "Aberto agora" : "Fechado agora"}
           </span>
           <span className="inline-flex items-center gap-2">
             <Accessibility className="h-4 w-4 text-accent" /> Acesso para cadeirantes
@@ -294,24 +311,32 @@ function Home() {
               <span
                 className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium"
                 style={
-                  openNow
+                  abertoAgora
                     ? { background: "rgba(46,125,50,0.2)", color: "#4ade80", border: "1px solid #2E7D32" }
                     : { background: "rgba(127,29,29,0.25)", color: "#fca5a5", border: "1px solid #7f1d1d" }
                 }
               >
                 <Clock className="h-3.5 w-3.5" />
-                {openNow ? "Aberto agora" : "Fechado agora"}
+                {abertoAgora ? "Aberto agora" : "Fechado agora"}
               </span>
             </div>
           </div>
+          {/* Vem das configurações: mudar um horário (feriado, recesso) é
+              edição no painel, não alteração de código + deploy. */}
           <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <ul className="divide-y divide-border">
-              {HOURS.map((h) => (
-                <li key={h.label} className="flex items-center justify-between px-6 py-3">
-                  <span className="font-medium">{h.label}</span>
-                  <span className="text-muted-foreground">{h.value}</span>
-                </li>
-              ))}
+              {[...horarios]
+                .sort((a, b) => ((a.dia + 6) % 7) - ((b.dia + 6) % 7))
+                .map((h) => (
+                  <li key={h.dia} className="flex items-center justify-between px-6 py-3">
+                    <span className="font-medium">{DIAS_LONGOS[h.dia]}</span>
+                    <span className="text-muted-foreground">
+                      {h.faixas.length
+                        ? h.faixas.map((f) => `${f[0]}–${f[1]}`).join(" / ")
+                        : "Fechado"}
+                    </span>
+                  </li>
+                ))}
             </ul>
           </div>
         </div>

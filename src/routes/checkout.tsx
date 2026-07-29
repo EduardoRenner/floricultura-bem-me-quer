@@ -13,6 +13,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCart } from "@/lib/cart";
 import { ADDRESS, formatBRL, WHATSAPP_URL } from "@/lib/shop";
 import { createOrder } from "@/lib/order.functions";
+import { getPublicSettings } from "@/lib/settings.functions";
 
 // Converte a data do input (YYYY-MM-DD) para o formato brasileiro DD/MM/AAAA.
 function formatDateBR(iso: string): string {
@@ -28,14 +29,21 @@ const PAYMENT_DB: Record<string, string> = {
   "Cartão": "cartao",
 };
 
-export const Route = createFileRoute("/checkout")({ component: CheckoutPage });
+export const Route = createFileRoute("/checkout")({
+  loader: () => getPublicSettings(),
+  component: CheckoutPage,
+});
 
 function CheckoutPage() {
   const navigate = useNavigate();
   const { items, subtotal, clear } = useCart();
+  const { status: entrega, taxaEntrega } = Route.useLoaderData();
   const createOrderFn = useServerFn(createOrder);
 
-  const deliveryFee = 15;
+  // Taxa vinda das configurações, a mesma que o servidor usa ao gravar o
+  // pedido. Antes era 15 fixo aqui e lido do banco lá — mudar a taxa no
+  // painel fazia a tela mostrar um valor e o pedido gravar outro.
+  const deliveryFee = taxaEntrega;
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
   const [submitting, setSubmitting] = useState(false);
 
@@ -390,9 +398,17 @@ function CheckoutPage() {
                 <span className="text-primary">{formatBRL(total)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
-              <CheckCircle2 className="h-4 w-4" />
-              Seu pedido será enviado diretamente pelo WhatsApp para confirmarmos os detalhes.
+            {/* Prazo no resumo, ao lado do total: é onde a pessoa hesita
+                antes de confirmar. */}
+            <div className="flex items-start gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
+              <Truck className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{entrega.texto}</span>
+            </div>
+            <div className="flex items-start gap-2 rounded-lg bg-secondary/50 p-3 text-xs text-muted-foreground">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Seu pedido será enviado pelo WhatsApp para confirmarmos os detalhes.
+              </span>
             </div>
           </aside>
         </div>
