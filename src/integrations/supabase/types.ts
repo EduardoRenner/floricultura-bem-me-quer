@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: number
+          ip: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: never
+          ip?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: never
+          ip?: string | null
+        }
+        Relationships: []
+      }
       admin_login_attempts: {
         Row: {
           attempted_at: string
@@ -27,6 +51,24 @@ export type Database = {
         }
         Update: {
           attempted_at?: string
+          id?: never
+          ip?: string
+        }
+        Relationships: []
+      }
+      order_rate_limit: {
+        Row: {
+          created_at: string
+          id: number
+          ip: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          ip: string
+        }
+        Update: {
+          created_at?: string
           id?: never
           ip?: string
         }
@@ -154,12 +196,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      // Vem da migration 20260728120000_admin_audit_log.sql. Adicionada a mao
-      // porque este arquivo ainda foi gerado antes de ela ser aplicada no
-      // banco — ao rodar a geracao de tipos de novo, esta entrada reaparece
-      // sozinha e este comentario pode sair.
+      check_order_rate_limit: { Args: { _ip: string }; Returns: boolean }
+      get_admin_audit_log: {
+        Args: { _limit?: number }
+        Returns: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: number
+          ip: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "admin_audit_log"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       log_admin_action: {
-        Args: { _action: string; _details?: Json | null; _ip?: string | null }
+        Args: { _action: string; _details?: Json; _ip?: string }
         Returns: undefined
       }
       set_admin_password: {
@@ -170,7 +225,6 @@ export type Database = {
         Args: { _ip: string; _password: string }
         Returns: string
       }
-      verify_admin_password: { Args: { _password: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
