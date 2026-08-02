@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 import { ADDRESS, formatBRL } from "@/lib/shop";
 
 // Gera o PDF de um pedido pronto para impressão. Roda inteiramente no
@@ -18,7 +19,12 @@ export type OrderPdfData = {
   deliveryAddress: Record<string, string> | null;
   customerName: string;
   customerPhone: string;
+  // Pedidos a partir de 2026-08-02 gravam instrução de entrega e mensagem do
+  // cartão em campos separados. Pedidos antigos só têm `notes` (o campo único
+  // de antes) — mostrado como estava, sem tentar separar retroativamente.
   notes: string | null;
+  deliveryInstructions?: string | null;
+  cardMessage?: string | null;
   items: OrderPdfItem[];
   total: number;
 };
@@ -64,18 +70,26 @@ function formatDateTime(iso: string): string {
 /**
  * Busca a logo e devolve como data URL. `null` se não existir ou falhar —
  * o PDF sai sem logo em vez de quebrar (item 7 do pedido: tratar dado ausente).
+ *
+ * `baseUrl` é necessário quando isto roda fora do navegador (server function):
+ * sem `window`, uma URL relativa não tem para onde apontar.
  */
-async function loadLogoDataUrl(): Promise<string | null> {
+async function loadLogoDataUrl(baseUrl: string): Promise<string | null> {
   try {
-    const res = await fetch("/logo-bmq.png");
+    const res = await fetch(`${baseUrl}/logo-bmq.png`);
     if (!res.ok) return null;
     const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
+    if (typeof FileReader !== "undefined") {
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    }
+    // Sem FileReader (Node/server function): converte via Buffer.
+    const buf = Buffer.from(await blob.arrayBuffer());
+    return `data:${blob.type || "image/png"};base64,${buf.toString("base64")}`;
   } catch {
     return null;
   }
@@ -84,12 +98,23 @@ async function loadLogoDataUrl(): Promise<string | null> {
 const PAGE_WIDTH = 210; // A4 em mm
 const MARGIN_X = 15;
 
-export async function generateOrderPdf(order: OrderPdfData): Promise<jsPDF> {
+export type GenerateOrderPdfOptions = {
+  // Origem usada para buscar a logo e montar o link do QR code de
+  // confirmação de entrega. No navegador, o padrão é `window.location.origin`;
+  // rodando no servidor é obrigatório informar (ver orderPdf.server.ts).
+  baseUrl?: string;
+};
+
+export async function generateOrderPdf(
+  order: OrderPdfData,
+  opts: GenerateOrderPdfOptions = {},
+): Promise<jsPDF> {
+  const baseUrl = opts.baseUrl ?? (typeof window !== "undefined" ? window.location.origin : "");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = 15;
 
   // ---- Cabeçalho: logo + nome da loja + timestamp de geração ----
-  const logo = await loadLogoDataUrl();
+  const logo = baseUrl ? await loadLogoDataUrl(baseUrl) : null;
   const textX = logo ? MARGIN_X + 24 : MARGIN_X;
   if (logo) {
     try {
@@ -177,7 +202,21 @@ export async function generateOrderPdf(order: OrderPdfData): Promise<jsPDF> {
     y += 5.5;
   }
 
-  if (order.notes?.trim()) {
+  if (order.deliveryInstructions?.trim()) {
+    y += 2;
+    doc.setFont("helvetica", "bold");
+    doc.text("Instruções de entrega:", MARGIN_X, y);
+    y += 5.5;
+    doc.setFont("helvetica", "normal");
+    const largura = PAGE_WIDTH - MARGIN_X * 2;
+    const linhasInstr = doc.splitTextToSize(order.deliveryInstructions, largura) as string[];
+    doc.text(linhasInstr, MARGIN_X, y);
+    y += linhasInstr.length * 5.5;
+  }
+
+  // Pedido antigo (anterior à separação de campos): mostra o texto único como
+  // estava, sem tentar decidir o que era instrução e o que era cartão.
+  if (!order.deliveryInstructions?.trim() && !order.cardMessage?.trim() && order.notes?.trim()) {
     y += 2;
     doc.setFont("helvetica", "bold");
     doc.text("Observações do cliente:", MARGIN_X, y);
@@ -190,6 +229,32 @@ export async function generateOrderPdf(order: OrderPdfData): Promise<jsPDF> {
   }
 
   y += 4;
+
+  // ---- Cartão de mensagem (bloco destacado) ----
+  if (order.cardMessage?.trim()) {
+    const largura = PAGE_WIDTH - MARGIN_X * 2;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    const linhasCartao = doc.splitTextToSize(order.cardMessage, largura - 10) as string[];
+    const boxHeight = 12 + linhasCartao.length * 6;
+
+    doc.setFillColor(250, 245, 235);
+    doc.setDrawColor(200, 170, 120);
+    doc.roundedRect(MARGIN_X, y, largura, boxHeight, 2, 2, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(120, 90, 40);
+    doc.text("CARTÃO DE MENSAGEM", MARGIN_X + 5, y + 7);
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(11);
+    doc.setTextColor(40);
+    doc.text(linhasCartao, MARGIN_X + 5, y + 14);
+    doc.setTextColor(0);
+
+    y += boxHeight + 8;
+  }
 
   // ---- Produtos ----
   // A taxa de entrega mora nos itens (o trigger do banco soma tudo em items
@@ -257,8 +322,112 @@ export async function generateOrderPdf(order: OrderPdfData): Promise<jsPDF> {
   doc.setFontSize(13);
   doc.text("Total:", totalsLabelX, y + 4);
   doc.text(formatBRL(order.total), totalsValueX, y + 4, { align: "right" });
+  y += 4;
+
+  await addDeliveryConfirmationBlock(doc, order, y, baseUrl);
 
   return doc;
+}
+
+const QR_SIZE = 28; // mm
+
+/**
+ * Bloco "COMPROVANTE DE ENTREGA": dados de quem recebe + canhoto de
+ * confirmação (data/hora, nome, assinatura, checkboxes) + QR code que abre
+ * `/confirmar-entrega/{numero}` — o entregador confirma pelo celular, sem
+ * precisar de painel admin nem de um número de WhatsApp externo.
+ */
+async function addDeliveryConfirmationBlock(
+  doc: jsPDF,
+  order: OrderPdfData,
+  startY: number,
+  baseUrl: string,
+): Promise<void> {
+  const largura = PAGE_WIDTH - MARGIN_X * 2;
+  // Reserva ~70mm para o bloco inteiro; se não couber no que resta da
+  // página, começa uma nova em vez de partir o comprovante ao meio.
+  let y = startY;
+  if (y > 227) {
+    doc.addPage();
+    y = 20;
+  }
+
+  doc.setDrawColor(150);
+  doc.setLineWidth(0.3);
+  doc.rect(MARGIN_X, y, largura, 68);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("COMPROVANTE DE ENTREGA", MARGIN_X + 5, y + 8);
+  doc.setDrawColor(180);
+  doc.line(MARGIN_X + 5, y + 10, PAGE_WIDTH - MARGIN_X - 5, y + 10);
+
+  const textX = MARGIN_X + 5;
+  const qrX = PAGE_WIDTH - MARGIN_X - 5 - QR_SIZE;
+  let ty = y + 17;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Destinatário: ${order.customerName || "—"}`, textX, ty);
+  ty += 5.5;
+
+  if (order.deliveryType === "delivery" && order.deliveryAddress) {
+    const a = order.deliveryAddress;
+    const ruaNumero = [a.rua, a.numero].filter(Boolean).join(", ");
+    const linha = [ruaNumero, a.bairro].filter(Boolean).join(" - ");
+    const linhasEndereco = doc.splitTextToSize(
+      `Endereço: ${linha || "—"}`,
+      largura - QR_SIZE - 15,
+    ) as string[];
+    doc.text(linhasEndereco, textX, ty);
+    ty += linhasEndereco.length * 5.5;
+  } else {
+    doc.text(`Retirada na loja — ${ADDRESS}`, textX, ty);
+    ty += 5.5;
+  }
+
+  doc.text(
+    `Telefone: ${order.customerPhone || "—"} (ligar somente se necessário)`,
+    textX,
+    ty,
+  );
+  ty += 8;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text("Data/hora da entrega: _____/_____/________  às  _______", textX, ty);
+  ty += 7;
+  doc.text("Nome legível de quem recebeu: ____________________________________", textX, ty);
+  ty += 9;
+
+  const checkboxes: Array<[string, number]> = [
+    ["Em mãos", textX],
+    ["Familiar", textX + 35],
+    ["Portaria", textX + 70],
+    ["Vizinho", textX + 105],
+  ];
+  for (const [label, cx] of checkboxes) {
+    doc.rect(cx, ty - 3.5, 3.5, 3.5);
+    doc.text(label, cx + 5, ty);
+  }
+  ty += 10;
+
+  doc.text("Assinatura: ________________________________________", textX, ty);
+
+  // ---- QR code: abre a página de confirmação de entrega ----
+  try {
+    if (!baseUrl) throw new Error("sem baseUrl");
+    const confirmUrl = `${baseUrl}/confirmar-entrega/${encodeURIComponent(order.orderNumber)}`;
+    const qrDataUrl = await QRCode.toDataURL(confirmUrl, { margin: 0, width: 256 });
+    doc.addImage(qrDataUrl, "PNG", qrX, y + 15, QR_SIZE, QR_SIZE);
+    doc.setFontSize(7);
+    doc.setTextColor(100);
+    doc.text("Confirmar entrega", qrX + QR_SIZE / 2, y + 15 + QR_SIZE + 4, { align: "center" });
+    doc.setTextColor(0);
+  } catch {
+    // QR não gerado (ex.: sem baseUrl disponível) — comprovante segue
+    // funcional só com o canhoto de assinatura manual.
+  }
 }
 
 /**

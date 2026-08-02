@@ -253,6 +253,8 @@ type Order = {
   // confiar cegamente.
   items: { name: string; quantity: number; price?: number }[];
   notes: string | null;
+  delivery_instructions: string | null;
+  card_message: string | null;
   payment_method: string;
   delivery_address: Record<string, string> | null;
 };
@@ -290,6 +292,8 @@ function OrdersTab({ password }: { password: string }) {
           customerName: o.customer_name,
           customerPhone: o.customer_phone,
           notes: o.notes,
+          deliveryInstructions: o.delivery_instructions,
+          cardMessage: o.card_message,
           items: o.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price ?? 0 })),
           total: Number(o.total),
         },
@@ -408,7 +412,19 @@ function OrdersTab({ password }: { password: string }) {
                               </li>
                             ))}
                           </ul>
-                          {o.notes && (
+                          {o.delivery_instructions && (
+                            <>
+                              <h4 className="mt-3 mb-1 font-semibold">Instruções de entrega</h4>
+                              <p className="text-sm text-muted-foreground">{o.delivery_instructions}</p>
+                            </>
+                          )}
+                          {o.card_message && (
+                            <>
+                              <h4 className="mt-3 mb-1 font-semibold">Mensagem do cartão</h4>
+                              <p className="text-sm text-muted-foreground">{o.card_message}</p>
+                            </>
+                          )}
+                          {!o.delivery_instructions && !o.card_message && o.notes && (
                             <>
                               <h4 className="mt-3 mb-1 font-semibold">Observações</h4>
                               <p className="text-sm text-muted-foreground">{o.notes}</p>

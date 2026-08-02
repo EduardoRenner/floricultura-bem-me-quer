@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as OcasioesRouteImport } from './routes/ocasioes'
+import { Route as ConfirmarEntregaOrderNumberRouteImport } from './routes/confirmar-entrega.$orderNumber'
 import { Route as PedidoOrderNumberRouteImport } from './routes/pedido.$orderNumber'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,12 @@ const OcasioesRoute = OcasioesRouteImport.update({
   path: '/ocasioes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfirmarEntregaOrderNumberRoute =
+  ConfirmarEntregaOrderNumberRouteImport.update({
+    id: '/confirmar-entrega/$orderNumber',
+    path: '/confirmar-entrega/$orderNumber',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PedidoOrderNumberRoute = PedidoOrderNumberRouteImport.update({
   id: '/pedido/$orderNumber',
   path: '/pedido/$orderNumber',
@@ -46,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
   '/ocasioes': typeof OcasioesRoute
+  '/confirmar-entrega/$orderNumber': typeof ConfirmarEntregaOrderNumberRoute
   '/pedido/$orderNumber': typeof PedidoOrderNumberRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +61,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
   '/ocasioes': typeof OcasioesRoute
+  '/confirmar-entrega/$orderNumber': typeof ConfirmarEntregaOrderNumberRoute
   '/pedido/$orderNumber': typeof PedidoOrderNumberRoute
 }
 export interface FileRoutesById {
@@ -61,19 +70,33 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
   '/ocasioes': typeof OcasioesRoute
+  '/confirmar-entrega/$orderNumber': typeof ConfirmarEntregaOrderNumberRoute
   '/pedido/$orderNumber': typeof PedidoOrderNumberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/checkout' | '/ocasioes' | '/pedido/$orderNumber'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/checkout'
+    | '/ocasioes'
+    | '/confirmar-entrega/$orderNumber'
+    | '/pedido/$orderNumber'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/checkout' | '/ocasioes' | '/pedido/$orderNumber'
+  to:
+    | '/'
+    | '/admin'
+    | '/checkout'
+    | '/ocasioes'
+    | '/confirmar-entrega/$orderNumber'
+    | '/pedido/$orderNumber'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/checkout'
     | '/ocasioes'
+    | '/confirmar-entrega/$orderNumber'
     | '/pedido/$orderNumber'
   fileRoutesById: FileRoutesById
 }
@@ -82,6 +105,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CheckoutRoute: typeof CheckoutRoute
   OcasioesRoute: typeof OcasioesRoute
+  ConfirmarEntregaOrderNumberRoute: typeof ConfirmarEntregaOrderNumberRoute
   PedidoOrderNumberRoute: typeof PedidoOrderNumberRoute
 }
 
@@ -115,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OcasioesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/confirmar-entrega/$orderNumber': {
+      id: '/confirmar-entrega/$orderNumber'
+      path: '/confirmar-entrega/$orderNumber'
+      fullPath: '/confirmar-entrega/$orderNumber'
+      preLoaderRoute: typeof ConfirmarEntregaOrderNumberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pedido/$orderNumber': {
       id: '/pedido/$orderNumber'
       path: '/pedido/$orderNumber'
@@ -130,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CheckoutRoute: CheckoutRoute,
   OcasioesRoute: OcasioesRoute,
+  ConfirmarEntregaOrderNumberRoute: ConfirmarEntregaOrderNumberRoute,
   PedidoOrderNumberRoute: PedidoOrderNumberRoute,
 }
 export const routeTree = rootRouteImport

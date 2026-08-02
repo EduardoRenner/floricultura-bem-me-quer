@@ -18,9 +18,14 @@ type CreateOrderInput = {
   delivery_date?: string | null;
   delivery_time?: string | null;
   payment_method: string; // 'pix' | 'dinheiro' | 'cartao'
-  notes?: string | null;
+  delivery_instructions?: string | null;
+  card_message?: string | null;
   items: OrderItemInput[];
 };
+
+// Limite do campo "mensagem do cartão" — cartões físicos não têm espaço para
+// textos longos, e isso evita que a mensagem estoure o bloco reservado no PDF.
+const CARD_MESSAGE_MAX_LENGTH = 200;
 
 // A taxa entra como item para o total do trigger (soma dos itens) bater com o
 // total exibido. O rótulo precisa continuar exatamente assim: `adminStats`
@@ -117,20 +122,131 @@ export const createOrder = createServerFn({ method: "POST" })
         delivery_date: data.delivery_date || null,
         delivery_time: data.delivery_time || null,
         payment_method: data.payment_method,
-        notes: data.notes?.slice(0, 2000) || null,
+        delivery_instructions: data.delivery_instructions?.trim().slice(0, 2000) || null,
+        card_message: data.card_message?.trim().slice(0, CARD_MESSAGE_MAX_LENGTH) || null,
         status: "pendente",
         total: 0, // recalculado pelo trigger a partir dos itens acima
         items,
       })
-      .select("order_number")
+      .select("order_number,created_at")
       .single();
 
     if (error) throw new Error(error.message);
+
+    const orderNumber = (row?.order_number as string) ?? null;
+    const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
+
+    // Gera o PDF (dados do pedido + cartão + comprovante com QR) e sobe no
+    // bucket privado, devolvendo uma signed URL para ir na mensagem do
+    // WhatsApp. Best-effort: se falhar, o pedido já está gravado e o
+    // checkout segue sem o link — não pode travar o fechamento do pedido.
+    let pdfUrl: string | null = null;
+    if (orderNumber) {
+      const { generateAndStoreOrderPdf } = await import("@/lib/orderPdf.server");
+      pdfUrl = await generateAndStoreOrderPdf({
+        orderNumber,
+        createdAt: (row?.created_at as string) ?? new Date().toISOString(),
+        status: "pendente",
+        paymentMethod: data.payment_method,
+        deliveryType: data.delivery_type,
+        deliveryAddress: data.delivery_address ?? null,
+        customerName: data.customer_name.trim(),
+        customerPhone: data.customer_phone.trim(),
+        notes: null,
+        deliveryInstructions: data.delivery_instructions?.trim() || null,
+        cardMessage: data.card_message?.trim() || null,
+        items,
+        total,
+      });
+    }
+
     // Devolve os itens já precificados pelo servidor para o checkout montar a
     // mensagem do WhatsApp com os valores que realmente foram gravados.
+    return { orderNumber, items, total, pdfUrl };
+  });
+
+const RECEIVED_TYPE_LABELS: Record<string, string> = {
+  em_maos: "Em mãos",
+  familiar: "Familiar",
+  portaria: "Portaria",
+  vizinho: "Vizinho",
+};
+
+// Página pública que o entregador abre pelo QR code do comprovante — sem
+// senha, então só devolve o mínimo necessário para ele conferir que é o
+// pedido certo antes de confirmar (nome, endereço, telefone já estão
+// impressos no papel que ele tem em mãos; nada aqui vaza dado que ele não
+// tivesse de outra forma).
+// Devolve `{ found: false }` em vez de lançar erro quando o pedido não
+// existe — testado ao vivo que uma server function chamada via useServerFn +
+// useQuery não propaga o erro lançado como `error` do lado do cliente (o
+// resultado chega undefined, sem estado de loading nem de erro). Um
+// discriminador explícito no retorno evita depender desse comportamento.
+export const getOrderForDeliveryConfirmation = createServerFn({ method: "POST" })
+  .inputValidator((data: { orderNumber: string }) => data)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const orderNumber = data.orderNumber?.trim();
+    if (!orderNumber) return { found: false as const };
+
+    const { data: row, error } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "order_number,customer_name,delivery_type,delivery_address,delivered_confirmed_at,delivered_received_by,delivered_received_type",
+      )
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+    if (error || !row) return { found: false as const };
+
     return {
-      orderNumber: (row?.order_number as string) ?? null,
-      items,
-      total: items.reduce((s, i) => s + i.price * i.quantity, 0),
+      found: true as const,
+      orderNumber: row.order_number as string,
+      customerName: row.customer_name as string,
+      deliveryType: row.delivery_type as string,
+      deliveryAddress: row.delivery_address as Record<string, string> | null,
+      confirmed: Boolean(row.delivered_confirmed_at),
+      confirmedAt: row.delivered_confirmed_at as string | null,
+      receivedBy: row.delivered_received_by as string | null,
+      receivedTypeLabel: row.delivered_received_type
+        ? (RECEIVED_TYPE_LABELS[row.delivered_received_type as string] ?? null)
+        : null,
     };
+  });
+
+export const confirmDelivery = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { orderNumber: string; receivedBy: string; receivedType: string }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const orderNumber = data.orderNumber?.trim();
+    const receivedBy = data.receivedBy?.trim();
+    const receivedType = data.receivedType?.trim();
+
+    if (!orderNumber) throw new Error("Pedido inválido");
+    if (!receivedBy) throw new Error("Informe o nome de quem recebeu");
+    if (!RECEIVED_TYPE_LABELS[receivedType]) throw new Error("Selecione quem recebeu o pedido");
+
+    const { data: existing } = await supabaseAdmin
+      .from("orders")
+      .select("delivered_confirmed_at")
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+    if (existing?.delivered_confirmed_at) throw new Error("Esta entrega já foi confirmada");
+
+    const { data: row, error } = await supabaseAdmin
+      .from("orders")
+      .update({
+        delivered_confirmed_at: new Date().toISOString(),
+        delivered_received_by: receivedBy.slice(0, 200),
+        delivered_received_type: receivedType,
+        status: "entregue",
+      })
+      .eq("order_number", orderNumber)
+      .select("order_number")
+      .maybeSingle();
+    if (error) throw new Error("Não foi possível confirmar a entrega");
+    if (!row) throw new Error("Pedido não encontrado");
+
+    return { ok: true };
   });
