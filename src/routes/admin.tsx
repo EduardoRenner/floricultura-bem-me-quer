@@ -62,7 +62,24 @@ import { DIAS_LONGOS, HORARIOS_PADRAO, type DiaHorario } from "@/lib/delivery";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
-const STORAGE_KEY = "bmq-admin-pass";
+// Guarda o TOKEN de sessão (assinado, expira em 24h) — nunca mais a senha
+// crua. Ver src/lib/adminSession.server.ts.
+const STORAGE_KEY = "bmq-admin-session";
+
+// Toda query/mutation do painel passa por aqui: se o servidor disser que a
+// sessão expirou (token vencido ou nunca existiu), desloga e recarrega em
+// vez de deixar a tela presa num erro genérico que não explica o que fazer.
+async function withSession<T>(promise: Promise<T>): Promise<T> {
+  try {
+    return await promise;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Sessão expirada")) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      window.location.reload();
+    }
+    throw err;
+  }
+}
 const STATUSES = ["pendente", "em_preparo", "saiu_entrega", "entregue", "cancelado"];
 const STATUS_LABEL: Record<string, string> = {
   pendente: "Pendente",
@@ -82,15 +99,15 @@ const STATUS_COLOR: Record<string, string> = {
 type Tab = "dashboard" | "orders" | "products" | "settings";
 
 function AdminPage() {
-  const [password, setPassword] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
 
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
-    if (saved) setPassword(saved);
+    if (saved) setToken(saved);
   }, []);
 
-  if (!password) return <LoginCard onLogin={setPassword} />;
+  if (!token) return <LoginCard onLogin={setToken} />;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -137,7 +154,7 @@ function AdminPage() {
             className="mt-6 w-full justify-start text-muted-foreground"
             onClick={() => {
               sessionStorage.removeItem(STORAGE_KEY);
-              setPassword(null);
+              setToken(null);
             }}
           >
             <LogOut className="mr-2 h-4 w-4" /> Sair
@@ -160,10 +177,10 @@ function AdminPage() {
             ))}
           </div>
 
-          {tab === "dashboard" && <DashboardTab password={password} />}
-          {tab === "orders" && <OrdersTab password={password} />}
-          {tab === "products" && <ProductsTab password={password} />}
-          {tab === "settings" && <SettingsTab password={password} />}
+          {tab === "dashboard" && <DashboardTab token={token} />}
+          {tab === "orders" && <OrdersTab token={token} />}
+          {tab === "products" && <ProductsTab token={token} />}
+          {tab === "settings" && <SettingsTab token={token} />}
         </main>
       </div>
     </div>
@@ -186,9 +203,9 @@ function LoginCard({ onLogin }: { onLogin: (p: string) => void }) {
           }
           setLoading(true);
           try {
-            await login({ data: { password: value } });
-            sessionStorage.setItem(STORAGE_KEY, value);
-            onLogin(value);
+            const res = await login({ data: { password: value } });
+            sessionStorage.setItem(STORAGE_KEY, res.token);
+            onLogin(res.token);
             toast.success("Bem-vindo(a)!");
           } catch (err) {
             const msg = err instanceof Error ? err.message : "Erro";
@@ -228,11 +245,11 @@ function LoginCard({ onLogin }: { onLogin: (p: string) => void }) {
   );
 }
 
-function DashboardTab({ password }: { password: string }) {
+function DashboardTab({ token }: { token: string }) {
   const stats = useServerFn(adminStats);
   const { data } = useQuery({
     queryKey: ["admin-stats"],
-    queryFn: () => stats({ data: { password } }),
+    queryFn: () => withSession(stats({ data: { token } })),
   });
   return <ReportsDashboard live={data} />;
 }
@@ -259,7 +276,7 @@ type Order = {
   delivery_address: Record<string, string> | null;
 };
 
-function OrdersTab({ password }: { password: string }) {
+function OrdersTab({ token }: { token: string }) {
   const qc = useQueryClient();
   const list = useServerFn(adminListOrders);
   const update = useServerFn(adminUpdateOrderStatus);
@@ -308,12 +325,12 @@ function OrdersTab({ password }: { password: string }) {
 
   const { data: orders } = useQuery({
     queryKey: ["admin-orders"],
-    queryFn: async () => (await list({ data: { password } })) as unknown as Order[],
+    queryFn: async () => (await withSession(list({ data: { token } }))) as unknown as Order[],
   });
 
   const mutation = useMutation({
     mutationFn: (v: { id: string; status: string }) =>
-      update({ data: { password, ...v } }),
+      withSession(update({ data: { token, ...v } })),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       toast.success("Status atualizado");
@@ -321,7 +338,7 @@ function OrdersTab({ password }: { password: string }) {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => del({ data: { password, id } }),
+    mutationFn: (id: string) => withSession(del({ data: { token, id } })),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       qc.invalidateQueries({ queryKey: ["admin-stats"] });
@@ -516,7 +533,7 @@ type AdminProduct = {
   occasions: string[];
 };
 
-function ProductsTab({ password }: { password: string }) {
+function ProductsTab({ token }: { token: string }) {
   const qc = useQueryClient();
   const list = useServerFn(adminListProducts);
   const upsert = useServerFn(adminUpsertProduct);
@@ -542,14 +559,16 @@ function ProductsTab({ password }: { password: string }) {
     setUploading(true);
     try {
       const base64 = await fileToBase64(file);
-      const result = await uploadImage({
-        data: {
-          password,
-          fileName: file.name,
-          contentType: file.type,
-          base64,
-        },
-      });
+      const result = await withSession(
+        uploadImage({
+          data: {
+            token,
+            fileName: file.name,
+            contentType: file.type,
+            base64,
+          },
+        }),
+      );
       setEditing((prev) => (prev ? { ...prev, image_url: result.url } : prev));
       toast.success("Imagem enviada!");
     } catch (err) {
@@ -561,26 +580,28 @@ function ProductsTab({ password }: { password: string }) {
 
   const { data: products } = useQuery({
     queryKey: ["admin-products"],
-    queryFn: () => list({ data: { password } }) as Promise<AdminProduct[]>,
+    queryFn: () => withSession(list({ data: { token } })) as Promise<AdminProduct[]>,
   });
 
   const save = useMutation({
     mutationFn: (p: AdminProduct) =>
-      upsert({
-        data: {
-          password,
-          product: {
-            id: p.id || undefined,
-            name: p.name,
-            description: p.description,
-            price: Number(p.price),
-            category: p.category,
-            image_url: p.image_url,
-            active: p.active,
-            occasions: p.occasions ?? [],
+      withSession(
+        upsert({
+          data: {
+            token,
+            product: {
+              id: p.id || undefined,
+              name: p.name,
+              description: p.description,
+              price: Number(p.price),
+              category: p.category,
+              image_url: p.image_url,
+              active: p.active,
+              occasions: p.occasions ?? [],
+            },
           },
-        },
-      }),
+        }),
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       qc.invalidateQueries({ queryKey: ["products"] });
@@ -592,7 +613,7 @@ function ProductsTab({ password }: { password: string }) {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => del({ data: { password, id } }),
+    mutationFn: (id: string) => withSession(del({ data: { token, id } })),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       qc.invalidateQueries({ queryKey: ["products"] });
@@ -843,7 +864,7 @@ function ProductsTab({ password }: { password: string }) {
   );
 }
 
-function SettingsTab({ password }: { password: string }) {
+function SettingsTab({ token }: { token: string }) {
   const qc = useQueryClient();
   const list = useServerFn(adminListSettings);
   const update = useServerFn(adminUpdateSetting);
@@ -851,7 +872,7 @@ function SettingsTab({ password }: { password: string }) {
   const { data: rows } = useQuery({
     queryKey: ["admin-settings"],
     queryFn: () =>
-      list({ data: { password } }) as Promise<
+      withSession(list({ data: { token } })) as Promise<
         { key: string; value: unknown }[]
       >,
   });
@@ -915,7 +936,7 @@ function SettingsTab({ password }: { password: string }) {
 
   const save = useMutation({
     mutationFn: (v: { key: string; value: unknown }) =>
-      update({ data: { password, key: v.key, value: v.value } }),
+      withSession(update({ data: { token, key: v.key, value: v.value } })),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-settings"] });
       qc.invalidateQueries({ queryKey: ["public-settings"] });

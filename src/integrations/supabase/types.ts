@@ -185,6 +185,27 @@ export type Database = {
         }
         Relationships: []
       }
+      request_rate_limit: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: number
+          ip: string
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: never
+          ip: string
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: never
+          ip?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           is_public: boolean
@@ -212,6 +233,15 @@ export type Database = {
     }
     Functions: {
       check_order_rate_limit: { Args: { _ip: string }; Returns: boolean }
+      check_rate_limit: {
+        Args: {
+          _bucket: string
+          _ip: string
+          _max: number
+          _window_minutes: number
+        }
+        Returns: boolean
+      }
       get_admin_audit_log: {
         Args: { _limit?: number }
         Returns: {

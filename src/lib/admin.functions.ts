@@ -28,6 +28,31 @@ async function verifyAdmin(password: string) {
   return supabaseAdmin;
 }
 
+// Usado por toda ação do painel DEPOIS do login — nunca mais reenvia a senha,
+// só o token de sessão (ver adminSession.server.ts). Também tem rate limit
+// por IP: um token vazado sozinho já vale pouco (expira em 24h e não abre
+// nada fora daqui), mas isso ainda impede alguém de martelar tokens forjados.
+async function requireSession(token: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { verifySessionToken } = await import("@/lib/adminSession.server");
+
+  const ip = await getClientIp();
+  const { data: allowed } = await supabaseAdmin.rpc("check_rate_limit", {
+    _bucket: "admin_session",
+    _ip: ip,
+    _max: 120,
+    _window_minutes: 10,
+  });
+  if (allowed === false) {
+    throw new Error("Muitas requisições. Aguarde um pouco e tente novamente.");
+  }
+
+  if (!verifySessionToken(token)) {
+    throw new Error("Sessão expirada, faça login novamente");
+  }
+  return supabaseAdmin;
+}
+
 type AdminClient = Awaited<ReturnType<typeof verifyAdmin>>;
 
 // Settings hoje sao config da loja (telefone, taxa de entrega...), nada secreto.
@@ -67,13 +92,14 @@ export const adminLogin = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => data)
   .handler(async ({ data }) => {
     await verifyAdmin(data.password);
-    return { ok: true as const };
+    const { createSessionToken } = await import("@/lib/adminSession.server");
+    return { ok: true as const, token: createSessionToken() };
   });
 
 export const adminListOrders = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string }) => data)
+  .inputValidator((data: { token: string }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     const { data: orders, error } = await admin
       .from("orders")
       .select("*")
@@ -84,9 +110,9 @@ export const adminListOrders = createServerFn({ method: "POST" })
   });
 
 export const adminUpdateOrderStatus = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string; id: string; status: string }) => data)
+  .inputValidator((data: { token: string; id: string; status: string }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     const { error } = await admin.from("orders").update({ status: data.status }).eq("id", data.id);
     if (error) throw new Error(error.message);
     await logAdminAction(admin, "order.update_status", { id: data.id, status: data.status });
@@ -94,9 +120,9 @@ export const adminUpdateOrderStatus = createServerFn({ method: "POST" })
   });
 
 export const adminDeleteOrder = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string; id: string }) => data)
+  .inputValidator((data: { token: string; id: string }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     // Le o numero do pedido antes de apagar: depois do delete o id vira uma
     // referencia morta, e o numero e o que identifica o pedido pra loja.
     const { data: before } = await admin
@@ -117,9 +143,9 @@ export const adminDeleteOrder = createServerFn({ method: "POST" })
   });
 
 export const adminListProducts = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string }) => data)
+  .inputValidator((data: { token: string }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     const { data: products, error } = await admin
       .from("products")
       .select("*")
@@ -134,7 +160,7 @@ export const adminListProducts = createServerFn({ method: "POST" })
 export const adminUpsertProduct = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
-      password: string;
+      token: string;
       product: {
         id?: string;
         name: string;
@@ -148,7 +174,7 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     const p = data.product;
     const { normalizeImageUrlForStorage } = await import("@/lib/storage.server");
 
@@ -188,10 +214,10 @@ export const adminUpsertProduct = createServerFn({ method: "POST" })
 
 export const adminUploadProductImage = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { password: string; fileName: string; contentType: string; base64: string }) => data,
+    (data: { token: string; fileName: string; contentType: string; base64: string }) => data,
   )
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
 
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(data.contentType)) {
@@ -223,9 +249,9 @@ export const adminUploadProductImage = createServerFn({ method: "POST" })
   });
 
 export const adminDeleteProduct = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string; id: string }) => data)
+  .inputValidator((data: { token: string; id: string }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     // Mesmo motivo do delete de pedido: guarda o nome antes de o registro sumir.
     const { data: before } = await admin
       .from("products")
@@ -243,9 +269,9 @@ export const adminDeleteProduct = createServerFn({ method: "POST" })
   });
 
 export const adminListSettings = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string }) => data)
+  .inputValidator((data: { token: string }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     const { data: rows, error } = await admin
       .from("settings")
       .select("*")
@@ -255,9 +281,9 @@ export const adminListSettings = createServerFn({ method: "POST" })
   });
 
 export const adminUpdateSetting = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string; key: string; value: unknown }) => data)
+  .inputValidator((data: { token: string; key: string; value: unknown }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
     if (data.key === "admin_password") {
       const newPw = typeof data.value === "string" ? data.value : "";
       if (newPw.length < 8) throw new Error("Senha muito curta (mínimo 8 caracteres)");
@@ -315,9 +341,9 @@ type OrderRow = {
 type OrderItem = { name?: string; quantity?: number };
 
 export const adminStats = createServerFn({ method: "POST" })
-  .inputValidator((data: { password: string }) => data)
+  .inputValidator((data: { token: string }) => data)
   .handler(async ({ data }) => {
-    const admin = await verifyAdmin(data.password);
+    const admin = await requireSession(data.token);
 
     const startOfDay = spStartOf("day");
     const startOfYear = spStartOf("year");

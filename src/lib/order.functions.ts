@@ -186,6 +186,20 @@ export const getOrderForDeliveryConfirmation = createServerFn({ method: "POST" }
   .inputValidator((data: { orderNumber: string }) => data)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getClientIp } = await import("@/lib/request.server");
+
+    // `order_number` é sequencial ("BMQ-1000", "BMQ-1001"...) e este endpoint
+    // é público (o entregador abre sem senha, via QR code) — sem isto, dava
+    // pra varrer números e coletar nome+endereço de qualquer cliente.
+    const ip = await getClientIp();
+    const { data: allowed } = await supabaseAdmin.rpc("check_rate_limit", {
+      _bucket: "delivery_lookup",
+      _ip: ip,
+      _max: 30,
+      _window_minutes: 10,
+    });
+    if (allowed === false) return { found: false as const };
+
     const orderNumber = data.orderNumber?.trim();
     if (!orderNumber) return { found: false as const };
 
@@ -219,6 +233,21 @@ export const confirmDelivery = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getClientIp } = await import("@/lib/request.server");
+
+    // Mesmo motivo do rate limit em getOrderForDeliveryConfirmation: sem
+    // limite, dava pra confirmar entregas falsas em massa varrendo números.
+    const ip = await getClientIp();
+    const { data: allowed } = await supabaseAdmin.rpc("check_rate_limit", {
+      _bucket: "delivery_confirm",
+      _ip: ip,
+      _max: 10,
+      _window_minutes: 10,
+    });
+    if (allowed === false) {
+      throw new Error("Muitas tentativas. Aguarde alguns minutos e tente novamente.");
+    }
+
     const orderNumber = data.orderNumber?.trim();
     const receivedBy = data.receivedBy?.trim();
     const receivedType = data.receivedType?.trim();
