@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, MapPin, MessageCircle, Store, Truck } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
@@ -37,17 +37,15 @@ export const Route = createFileRoute("/checkout")({
 function CheckoutPage() {
   const navigate = useNavigate();
   const { items, subtotal, clear } = useCart();
-  const { status: entrega, taxaEntrega } = Route.useLoaderData();
+  const { status: entrega } = Route.useLoaderData();
   const createOrderFn = useServerFn(createOrder);
 
-  // Taxa vinda das configurações, a mesma que o servidor usa ao gravar o
-  // pedido. Antes era 15 fixo aqui e lido do banco lá — mudar a taxa no
-  // painel fazia a tela mostrar um valor e o pedido gravar outro.
-  const deliveryFee = taxaEntrega;
+  // A taxa de entrega não tem valor fixo: varia por local e é combinada com
+  // a cliente depois, então não entra no cálculo do total aqui nem no servidor.
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
   const [submitting, setSubmitting] = useState(false);
 
-  const total = useMemo(() => subtotal + (deliveryType === "delivery" ? deliveryFee : 0), [subtotal, deliveryType, deliveryFee]);
+  const total = subtotal;
 
   if (items.length === 0) {
     return (
@@ -117,7 +115,7 @@ function CheckoutPage() {
     // Total estimado, só para exibir se o salvamento falhar. O número que vale
     // é o que o servidor devolve, calculado com os preços do catálogo.
     const productsTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    let finalTotal = productsTotal + (deliveryType === "delivery" ? deliveryFee : 0);
+    let finalTotal = productsTotal;
     let finalLines = items.map((i) => ({
       name: i.name,
       quantity: i.quantity,
@@ -175,7 +173,7 @@ function CheckoutPage() {
 
     const deliveryLine =
       deliveryType === "delivery"
-        ? `*Entrega*\n  Endereço: ${rua}, ${numero} - ${bairro}${cep ? " · CEP " + cep : ""}${complemento ? " · " + complemento : ""}`
+        ? `*Entrega*\n  Endereço: ${rua}, ${numero} - ${bairro}${cep ? " · CEP " + cep : ""}${complemento ? " · " + complemento : ""}\n  (Taxa de entrega a combinar)`
         : `*Retirada na loja*`;
 
     const dateLine = dateRaw
@@ -278,7 +276,7 @@ function CheckoutPage() {
                       <Truck className="h-4 w-4" /> Entrega
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Taxa: {formatBRL(deliveryFee)}
+                      Taxa de entrega a combinar
                     </div>
                   </div>
                 </label>
@@ -419,13 +417,22 @@ function CheckoutPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Entrega</span>
-                <span>{deliveryType === "delivery" ? formatBRL(deliveryFee) : "Retirada"}</span>
+                <span>{deliveryType === "delivery" ? "A combinar" : "Retirada"}</span>
               </div>
               <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
                 <span>Total</span>
                 <span className="text-primary">{formatBRL(total)}</span>
               </div>
             </div>
+            {deliveryType === "delivery" ? (
+              <div className="flex items-start gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  A taxa de entrega varia conforme o local e será combinada com
+                  você ao finalizar o pedido.
+                </span>
+              </div>
+            ) : null}
             {/* Prazo no resumo, ao lado do total: é onde a pessoa hesita
                 antes de confirmar. */}
             <div className="flex items-start gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">

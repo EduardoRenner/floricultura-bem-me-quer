@@ -16,7 +16,6 @@ export type PublicSettings = {
   abertoAgora: boolean;
   /** Já calculado aqui: o servidor é a fonte de verdade do "agora". */
   status: DeliveryStatus;
-  taxaEntrega: number;
 };
 
 /** Sanitiza o JSON vindo do banco — se alguém salvar lixo, o site não quebra. */
@@ -73,8 +72,6 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
     const abertoAgora =
       typeof override === "boolean" ? override : estaAbertoAgora(horarios);
 
-    const taxa = Number(mapa.get("delivery_fee"));
-
     // A previsão vale enquanto a loja ainda atender hoje — não apenas
     // enquanto estiver aberta. No intervalo de almoço ela reabre às 13h e a
     // previsão publicada continua de pé; depois do último fechamento, não.
@@ -85,7 +82,6 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
       entrega,
       abertoAgora,
       status: statusEntrega(podePrever ? entrega : ENTREGA_PADRAO, horarios),
-      taxaEntrega: Number.isFinite(taxa) && taxa >= 0 ? taxa : 15,
     };
   },
 );

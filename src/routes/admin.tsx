@@ -878,7 +878,6 @@ function SettingsTab({ token }: { token: string }) {
   });
 
   const map = new Map((rows ?? []).map((r) => [r.key, r.value]));
-  const [fee, setFee] = useState<string>("");
   const [min, setMin] = useState<string>("");
   const [override, setOverride] = useState<string>("auto");
   const [previsao, setPrevisao] = useState<string>("");
@@ -887,7 +886,6 @@ function SettingsTab({ token }: { token: string }) {
 
   useEffect(() => {
     if (!rows) return;
-    setFee(String(map.get("delivery_fee") ?? ""));
     setMin(String(map.get("minimum_order") ?? ""));
     const o = map.get("shop_open_override");
     setOverride(o === true ? "open" : o === false ? "closed" : "auto");
@@ -951,15 +949,6 @@ function SettingsTab({ token }: { token: string }) {
       <h1 className="font-display text-3xl">Configurações</h1>
       <p className="text-sm text-muted-foreground">Ajuste a operação da loja</p>
       <div className="mt-6 space-y-4">
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <Label>Taxa de entrega (R$)</Label>
-          <div className="mt-2 flex gap-2">
-            <Input value={fee} onChange={(e) => setFee(e.target.value)} type="number" step="0.01" />
-            <Button onClick={() => save.mutate({ key: "delivery_fee", value: Number(fee) })}>
-              Salvar
-            </Button>
-          </div>
-        </div>
         <div className="rounded-2xl border border-border bg-card p-6">
           <Label>Valor mínimo do pedido (R$)</Label>
           <div className="mt-2 flex gap-2">

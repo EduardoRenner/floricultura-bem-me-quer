@@ -27,14 +27,6 @@ type CreateOrderInput = {
 // textos longos, e isso evita que a mensagem estoure o bloco reservado no PDF.
 const CARD_MESSAGE_MAX_LENGTH = 200;
 
-// A taxa entra como item para o total do trigger (soma dos itens) bater com o
-// total exibido. O rótulo precisa continuar exatamente assim: `adminStats`
-// filtra por ele para não contar a taxa como produto vendido.
-const DELIVERY_FEE_LABEL = "Taxa de entrega";
-// Usada só se a setting `delivery_fee` sumir ou vier inválida — nunca deixa o
-// pedido sair sem taxa por causa de configuração faltando.
-const DELIVERY_FEE_FALLBACK = 15;
-
 export const createOrder = createServerFn({ method: "POST" })
   .inputValidator((data: CreateOrderInput) => data)
   .handler(async ({ data }) => {
@@ -97,19 +89,8 @@ export const createOrder = createServerFn({ method: "POST" })
       items.push({ id, name: p.name, quantity, price: Number(p.price) });
     }
 
-    if (data.delivery_type === "delivery") {
-      const { data: setting } = await supabaseAdmin
-        .from("settings")
-        .select("value")
-        .eq("key", "delivery_fee")
-        .maybeSingle();
-      const fee = Number(setting?.value);
-      items.push({
-        name: DELIVERY_FEE_LABEL,
-        quantity: 1,
-        price: Number.isFinite(fee) && fee >= 0 ? fee : DELIVERY_FEE_FALLBACK,
-      });
-    }
+    // A taxa de entrega não é mais calculada nem cobrada automaticamente:
+    // é combinada com a cliente depois, conforme o local de entrega.
 
     const { data: row, error } = await supabaseAdmin
       .from("orders")
