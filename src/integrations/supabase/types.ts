@@ -94,6 +94,9 @@ export type Database = {
           notes: string | null
           order_number: string
           payment_method: string
+          recipient_name: string | null
+          recipient_phone: string | null
+          reference_point: string | null
           status: string
           total: number
           updated_at: string
@@ -117,6 +120,9 @@ export type Database = {
           notes?: string | null
           order_number?: string
           payment_method: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          reference_point?: string | null
           status?: string
           total: number
           updated_at?: string
@@ -140,6 +146,9 @@ export type Database = {
           notes?: string | null
           order_number?: string
           payment_method?: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          reference_point?: string | null
           status?: string
           total?: number
           updated_at?: string

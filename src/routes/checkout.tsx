@@ -72,6 +72,8 @@ function CheckoutPage() {
     const name = String(fd.get("name") ?? "").trim();
     const phone = String(fd.get("phone") ?? "").trim();
     const email = (fd.get("email") as string)?.trim() || "";
+    const recipientName = String(fd.get("recipient_name") ?? "").trim();
+    const recipientPhone = String(fd.get("recipient_phone") ?? "").trim();
 
     if (name.length < 2) {
       toast.error("Por favor, informe seu nome completo.");
@@ -88,13 +90,24 @@ function CheckoutPage() {
       setSubmitting(false);
       return;
     }
+    if (recipientName.length < 2) {
+      toast.error("Informe o nome completo de quem vai receber.");
+      setSubmitting(false);
+      return;
+    }
     // Campos do endereço / extras
     const rua = String(fd.get("rua") ?? "").trim();
     const numero = String(fd.get("numero") ?? "").trim();
     const bairro = String(fd.get("bairro") ?? "").trim();
+    const referencePoint = String(fd.get("reference_point") ?? "").trim();
 
     if (deliveryType === "delivery" && (!rua || !numero || !bairro)) {
       toast.error("Preencha o endereço completo para entrega.");
+      setSubmitting(false);
+      return;
+    }
+    if (deliveryType === "delivery" && recipientPhone.replace(/\D/g, "").length < 10) {
+      toast.error("Informe o telefone de quem vai receber, com DDD.");
       setSubmitting(false);
       return;
     }
@@ -121,9 +134,10 @@ function CheckoutPage() {
       quantity: i.quantity,
       price: i.price,
     }));
-    // Signed URL do PDF (gerado no servidor ao salvar o pedido). `null` se a
-    // geração falhar — a mensagem sai sem o link em vez de travar o pedido.
+    // Signed URLs dos PDFs (gerados no servidor ao salvar o pedido). `null`
+    // se a geração falhar — a mensagem sai sem o link em vez de travar o pedido.
     let pdfUrl: string | null = null;
+    let cardPdfUrl: string | null = null;
 
     // Enviamos apenas o que o cliente legitimamente escolhe: qual produto e
     // quantos. Preço, nome e taxa de entrega são resolvidos no servidor a
@@ -142,9 +156,12 @@ function CheckoutPage() {
           customer_name: name,
           customer_phone: phone,
           customer_email: email || null,
+          recipient_name: recipientName,
+          recipient_phone: recipientPhone || null,
           delivery_type: deliveryType,
           delivery_address:
             deliveryType === "delivery" ? { rua, numero, bairro, cep, complemento } : null,
+          reference_point: referencePoint || null,
           delivery_date: dateRaw || null,
           delivery_time: timeRaw || null,
           payment_method: paymentDb,
@@ -162,6 +179,7 @@ function CheckoutPage() {
         finalLines = res.items.filter((i) => i.name !== "Taxa de entrega");
       }
       if (typeof res?.pdfUrl === "string") pdfUrl = res.pdfUrl;
+      if (typeof res?.cardPdfUrl === "string") cardPdfUrl = res.cardPdfUrl;
     } catch (err) {
       console.error("Falha ao salvar o pedido:", err);
     }
@@ -173,7 +191,7 @@ function CheckoutPage() {
 
     const deliveryLine =
       deliveryType === "delivery"
-        ? `*Entrega*\n  Endereço: ${rua}, ${numero} - ${bairro}${cep ? " · CEP " + cep : ""}${complemento ? " · " + complemento : ""}\n  (Taxa de entrega a combinar)`
+        ? `*Entrega*\n  Endereço: ${rua}, ${numero} - ${bairro}${cep ? " · CEP " + cep : ""}${complemento ? " · " + complemento : ""}${referencePoint ? "\n  Ponto de referência: " + referencePoint : ""}\n  (Taxa de entrega a combinar)`
         : `*Retirada na loja*`;
 
     const dateLine = dateRaw
@@ -189,9 +207,12 @@ function CheckoutPage() {
     const message = [
       `*Novo Pedido — ${orderNumber}*`,
       ``,
-      `*Cliente:* ${name}`,
-      `*Telefone:* ${phone}`,
+      `*Enviado por:* ${name}`,
+      `*Telefone de quem envia:* ${phone}`,
       email ? `*E-mail:* ${email}` : "",
+      ``,
+      `*Destinatário:* ${recipientName}`,
+      deliveryType === "delivery" ? `*Telefone de quem recebe:* ${recipientPhone}` : "",
       ``,
       `*Itens:*`,
       itemLines,
@@ -204,7 +225,8 @@ function CheckoutPage() {
       ``,
       `*Total: ${formatBRL(finalTotal)}*`,
       ``,
-      pdfUrl ? `*PDF do pedido (cartão + comprovante):* ${pdfUrl}` : "",
+      pdfUrl ? `*Comprovante do pedido (uso interno):* ${pdfUrl}` : "",
+      cardPdfUrl ? `*Cartão de mensagem (imprimir e enviar com o presente):* ${cardPdfUrl}` : "",
       ``,
       `Pedido feito pelo site — Floricultura Bem Me Quer`,
     ]
@@ -240,19 +262,40 @@ function CheckoutPage() {
             {/* Cliente */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
               <h2 className="font-display text-xl">Seus dados</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Para garantirmos a entrega do seu presente em Maravilha-SC, por gentileza nos
+                informe seus dados e os de quem vai receber.
+              </p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label>Nome completo *</Label>
+                  <Label>Seu nome *</Label>
                   <Input required name="name" />
                 </div>
                 <div>
-                  <Label>Telefone *</Label>
+                  <Label>Seu telefone *</Label>
                   <Input required name="phone" placeholder="(49) 9 9999-9999" />
                 </div>
                 <div className="md:col-span-2">
                   <Label>E-mail</Label>
                   <Input type="email" name="email" />
                 </div>
+              </div>
+            </section>
+
+            {/* Destinatário */}
+            <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+              <h2 className="font-display text-xl">Quem vai receber</h2>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label>Nome completo de quem vai receber *</Label>
+                  <Input required name="recipient_name" />
+                </div>
+                {deliveryType === "delivery" ? (
+                  <div>
+                    <Label>Telefone de quem vai receber *</Label>
+                    <Input required name="recipient_phone" placeholder="(49) 9 9999-9999" />
+                  </div>
+                ) : null}
               </div>
             </section>
 
@@ -318,6 +361,10 @@ function CheckoutPage() {
                     <Label>Complemento</Label>
                     <Input name="complemento" />
                   </div>
+                  <div className="md:col-span-2">
+                    <Label>Ponto de referência</Label>
+                    <Input name="reference_point" placeholder="Ex.: perto do mercado tal, casa amarela…" />
+                  </div>
                 </div>
               ) : (
                 <div className="mt-5 rounded-lg bg-secondary/50 p-4 text-sm">
@@ -357,7 +404,7 @@ function CheckoutPage() {
                   />
                 </div>
                 <div>
-                  <Label>Mensagem do cartão</Label>
+                  <Label>Mensagem para o cartão</Label>
                   <Textarea
                     name="card_message"
                     className="mt-2"

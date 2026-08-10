@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { ADDRESS, formatBRL } from "@/lib/shop";
+import { LOGO_DATA_URL } from "@/lib/logoDataUrl";
 
 // Gera o PDF de um pedido pronto para impressão. Roda inteiramente no
 // navegador (a única tela que usa isto é o painel admin), então não precisa
@@ -17,8 +18,15 @@ export type OrderPdfData = {
   paymentMethod: string;
   deliveryType: "delivery" | "pickup" | string;
   deliveryAddress: Record<string, string> | null;
+  // Quem compra/envia o presente — nunca quem recebe.
   customerName: string;
   customerPhone: string;
+  // Quem recebe o presente. Pedidos antigos (antes de 2026-08-08) não têm
+  // este campo gravado separadamente — cai no fallback para customerName em
+  // quem consome (ver orderPdf.server.ts / order.functions.ts).
+  recipientName: string;
+  recipientPhone?: string | null;
+  referencePoint?: string | null;
   // Pedidos a partir de 2026-08-02 gravam instrução de entrega e mensagem do
   // cartão em campos separados. Pedidos antigos só têm `notes` (o campo único
   // de antes) — mostrado como estava, sem tentar separar retroativamente.
@@ -61,47 +69,25 @@ export function orderPdfFileName(order: Pick<OrderPdfData, "orderNumber" | "cust
   return `Pedido-${order.orderNumber}-${nome}.pdf`;
 }
 
+export function cardPdfFileName(order: Pick<OrderPdfData, "orderNumber" | "recipientName">): string {
+  const nome = slug(order.recipientName) || "cliente";
+  return `Cartao-${order.orderNumber}-${nome}.pdf`;
+}
+
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
-/**
- * Busca a logo e devolve como data URL. `null` se não existir ou falhar —
- * o PDF sai sem logo em vez de quebrar (item 7 do pedido: tratar dado ausente).
- *
- * `baseUrl` é necessário quando isto roda fora do navegador (server function):
- * sem `window`, uma URL relativa não tem para onde apontar.
- */
-async function loadLogoDataUrl(baseUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${baseUrl}/logo-bmq.png`);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    if (typeof FileReader !== "undefined") {
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
-      });
-    }
-    // Sem FileReader (Node/server function): converte via Buffer.
-    const buf = Buffer.from(await blob.arrayBuffer());
-    return `data:${blob.type || "image/png"};base64,${buf.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
-
 const PAGE_WIDTH = 210; // A4 em mm
 const MARGIN_X = 15;
 
 export type GenerateOrderPdfOptions = {
-  // Origem usada para buscar a logo e montar o link do QR code de
-  // confirmação de entrega. No navegador, o padrão é `window.location.origin`;
-  // rodando no servidor é obrigatório informar (ver orderPdf.server.ts).
+  // Origem usada para montar o link do QR code de confirmação de entrega
+  // (a logo agora é embutida — ver logoDataUrl.ts — e não depende disto).
+  // No navegador, o padrão é `window.location.origin`; rodando no servidor é
+  // obrigatório informar (ver orderPdf.server.ts).
   baseUrl?: string;
 };
 
@@ -114,14 +100,11 @@ export async function generateOrderPdf(
   let y = 15;
 
   // ---- Cabeçalho: logo + nome da loja + timestamp de geração ----
-  const logo = baseUrl ? await loadLogoDataUrl(baseUrl) : null;
-  const textX = logo ? MARGIN_X + 24 : MARGIN_X;
-  if (logo) {
-    try {
-      doc.addImage(logo, "PNG", MARGIN_X, y - 3, 20, 20);
-    } catch {
-      // arquivo existe mas não é um PNG decodificável — segue sem logo.
-    }
+  const textX = MARGIN_X + 24;
+  try {
+    doc.addImage(LOGO_DATA_URL, "PNG", MARGIN_X, y - 3, 20, 20);
+  } catch {
+    // logo embutida corrompida (não deveria acontecer) — segue sem ela.
   }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -158,16 +141,26 @@ export async function generateOrderPdf(
   y += 3;
 
   // ---- Cliente ----
+  // Comprador (quem envia) e destinatário (quem recebe) são pessoas
+  // diferentes na maioria dos pedidos — cada nome no seu campo, sem misturar.
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text("Cliente", MARGIN_X, y);
   y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(`Nome: ${order.customerName || "—"}`, MARGIN_X, y);
+  doc.text(`Enviado por: ${order.customerName || "—"}`, MARGIN_X, y);
   y += 5.5;
-  doc.text(`Telefone: ${order.customerPhone || "—"}`, MARGIN_X, y);
+  doc.text(`Telefone de quem envia: ${order.customerPhone || "—"}`, MARGIN_X, y);
   y += 5.5;
+  doc.setFont("helvetica", "bold");
+  doc.text(`Destinatário: ${order.recipientName || "—"}`, MARGIN_X, y);
+  y += 5.5;
+  doc.setFont("helvetica", "normal");
+  if (order.recipientPhone?.trim()) {
+    doc.text(`Telefone de quem recebe: ${order.recipientPhone}`, MARGIN_X, y);
+    y += 5.5;
+  }
 
   if (order.deliveryType === "delivery") {
     const a = order.deliveryAddress;
@@ -191,6 +184,10 @@ export async function generateOrderPdf(
       y += 5.5;
       if (a.cep) {
         doc.text(`CEP: ${a.cep}`, MARGIN_X, y);
+        y += 5.5;
+      }
+      if (order.referencePoint?.trim()) {
+        doc.text(`Ponto de referência: ${order.referencePoint}`, MARGIN_X, y);
         y += 5.5;
       }
     } else {
@@ -230,31 +227,9 @@ export async function generateOrderPdf(
 
   y += 4;
 
-  // ---- Cartão de mensagem (bloco destacado) ----
-  if (order.cardMessage?.trim()) {
-    const largura = PAGE_WIDTH - MARGIN_X * 2;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    const linhasCartao = doc.splitTextToSize(order.cardMessage, largura - 10) as string[];
-    const boxHeight = 12 + linhasCartao.length * 6;
-
-    doc.setFillColor(250, 245, 235);
-    doc.setDrawColor(200, 170, 120);
-    doc.roundedRect(MARGIN_X, y, largura, boxHeight, 2, 2, "FD");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(120, 90, 40);
-    doc.text("CARTÃO DE MENSAGEM", MARGIN_X + 5, y + 7);
-
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(11);
-    doc.setTextColor(40);
-    doc.text(linhasCartao, MARGIN_X + 5, y + 14);
-    doc.setTextColor(0);
-
-    y += boxHeight + 8;
-  }
+  // A mensagem do cartão vira um PDF separado (generateCardPdf) — este
+  // comprovante mostra valor pago e dados do comprador/destinatário, e não
+  // pode ser o mesmo arquivo que acompanha o presente até o destinatário.
 
   // ---- Produtos ----
   // A taxa de entrega mora nos itens (o trigger do banco soma tudo em items
@@ -368,7 +343,7 @@ async function addDeliveryConfirmationBlock(
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  doc.text(`Destinatário: ${order.customerName || "—"}`, textX, ty);
+  doc.text(`Destinatário: ${order.recipientName || "—"}`, textX, ty);
   ty += 5.5;
 
   if (order.deliveryType === "delivery" && order.deliveryAddress) {
@@ -381,13 +356,21 @@ async function addDeliveryConfirmationBlock(
     ) as string[];
     doc.text(linhasEndereco, textX, ty);
     ty += linhasEndereco.length * 5.5;
+    if (order.referencePoint?.trim()) {
+      const linhasRef = doc.splitTextToSize(
+        `Referência: ${order.referencePoint}`,
+        largura - QR_SIZE - 15,
+      ) as string[];
+      doc.text(linhasRef, textX, ty);
+      ty += linhasRef.length * 5.5;
+    }
   } else {
     doc.text(`Retirada na loja — ${ADDRESS}`, textX, ty);
     ty += 5.5;
   }
 
   doc.text(
-    `Telefone: ${order.customerPhone || "—"} (ligar somente se necessário)`,
+    `Telefone: ${order.recipientPhone?.trim() || order.customerPhone || "—"} (ligar somente se necessário)`,
     textX,
     ty,
   );
@@ -430,6 +413,138 @@ async function addDeliveryConfirmationBlock(
   }
 }
 
+// Paleta do cartão — mesmo tom dourado/creme do bloco de destaque que já
+// existia no comprovante, para manter a identidade visual da loja.
+const CARD_GOLD_DARK: [number, number, number] = [120, 90, 40];
+const CARD_GOLD: [number, number, number] = [200, 170, 120];
+const CARD_CREAM: [number, number, number] = [253, 250, 244];
+const CARD_PETAL: [number, number, number] = [232, 172, 182];
+const CARD_PETAL_CENTER: [number, number, number] = [224, 184, 96];
+
+/**
+ * Desenha um pequeno emblema de flor com formas geométricas simples (o jsPDF
+ * não tem suporte a ilustração vetorial complexa) — 5 pétalas ao redor de um
+ * miolo, só para dar um toque decorativo sem depender de mais um asset.
+ */
+function drawFlowerMotif(doc: jsPDF, cx: number, cy: number, petalR: number): void {
+  const orbit = petalR * 1.3;
+  doc.setFillColor(...CARD_PETAL);
+  doc.setDrawColor(...CARD_GOLD);
+  doc.setLineWidth(0.15);
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+    const px = cx + orbit * Math.cos(angle);
+    const py = cy + orbit * Math.sin(angle);
+    doc.circle(px, py, petalR, "FD");
+  }
+  doc.setFillColor(...CARD_PETAL_CENTER);
+  doc.circle(cx, cy, petalR * 0.7, "F");
+}
+
+/**
+ * Gera o cartão de mensagem: PDF 2, o que acompanha o presente e pode ser
+ * visto pelo destinatário. Por isso não pode ter NENHUM valor monetário nem
+ * dado do comprador além do nome, usado só como assinatura da mensagem — sem
+ * telefone, endereço ou forma de pagamento.
+ *
+ * Layout de cartão (moldura + emblema de flor + tipografia serifada), não de
+ * comprovante: é o que vai junto do buquê até quem recebe.
+ */
+export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageHeight = 297;
+  const frameMargin = 18;
+  const frameW = PAGE_WIDTH - frameMargin * 2;
+  const frameH = pageHeight - frameMargin * 2;
+  const centerX = PAGE_WIDTH / 2;
+
+  // ---- Moldura do cartão: fundo creme + borda dourada dupla ----
+  doc.setFillColor(...CARD_CREAM);
+  doc.roundedRect(frameMargin, frameMargin, frameW, frameH, 4, 4, "F");
+  doc.setDrawColor(...CARD_GOLD);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(frameMargin, frameMargin, frameW, frameH, 4, 4, "S");
+  doc.setLineWidth(0.2);
+  doc.roundedRect(frameMargin + 3, frameMargin + 3, frameW - 6, frameH - 6, 3, 3, "S");
+
+  const MOTIF_R = 2.8; // mesmo raio no topo e no rodapé — moldura simétrica
+  let y = frameMargin + 16;
+
+  drawFlowerMotif(doc, centerX, y, MOTIF_R);
+  y += 14;
+
+  try {
+    doc.addImage(LOGO_DATA_URL, "PNG", centerX - 11, y, 22, 22);
+    y += 22 + 10; // altura da imagem + respiro antes do título, pra não colar
+  } catch {
+    // logo embutida corrompida (não deveria acontecer) — segue sem ela.
+  }
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...CARD_GOLD_DARK);
+  doc.text("Floricultura Bem Me Quer", centerX, y, { align: "center" });
+  y += 11;
+
+  doc.setDrawColor(...CARD_GOLD);
+  doc.setLineWidth(0.3);
+  doc.line(centerX - 22, y, centerX + 22, y);
+  y += 14;
+
+  // Cabeçalho (logo + nome da loja) fica fixo perto do topo; o bloco pessoal
+  // (destinatário + mensagem + assinatura) é centralizado no espaço que sobra
+  // até o emblema do rodapé — assim nem cola tudo em cima nem sobra um vão
+  // vazio gigante no meio, seja a mensagem curta ou longa.
+  const mensagem = order.cardMessage?.trim() || "—";
+  const linhasMensagem = doc.splitTextToSize(mensagem, frameW - 30) as string[];
+  const lineHeight = 8.5;
+  const mensagemH = linhasMensagem.length * lineHeight;
+
+  const nameBlockH = order.recipientName?.trim() ? 7 + 12 : 0;
+  const signatureBlockH = order.customerName?.trim() ? 16 + 6 : 0;
+  const contentH = nameBlockH + mensagemH + signatureBlockH;
+
+  const contentTop = y;
+  const bottomLimit = frameMargin + frameH - 26;
+  const freeSpace = bottomLimit - contentTop;
+  if (freeSpace > contentH) y += (freeSpace - contentH) / 2;
+
+  if (order.recipientName?.trim()) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(140);
+    doc.text("PARA", centerX, y, { align: "center" });
+    y += 7;
+    doc.setFont("times", "bold");
+    doc.setFontSize(17);
+    doc.setTextColor(40);
+    doc.text(order.recipientName, centerX, y, { align: "center" });
+    y += 12;
+  }
+
+  doc.setFont("times", "italic");
+  doc.setFontSize(15);
+  doc.setTextColor(50);
+  doc.text(linhasMensagem, centerX, y, { align: "center" });
+  y += mensagemH;
+
+  if (order.customerName?.trim()) {
+    const signatureY = y + 16;
+    doc.setDrawColor(...CARD_GOLD);
+    doc.setLineWidth(0.2);
+    doc.line(centerX - 15, signatureY - 6, centerX + 15, signatureY - 6);
+    doc.setFont("times", "italic");
+    doc.setFontSize(11);
+    doc.setTextColor(90);
+    doc.text(`Com carinho, ${order.customerName}`, centerX, signatureY, { align: "center" });
+  }
+
+  drawFlowerMotif(doc, centerX, frameMargin + frameH - 10, MOTIF_R);
+
+  doc.setTextColor(0);
+  return doc;
+}
+
 /**
  * Gera o PDF, baixa automaticamente com o nome padronizado e abre a
  * pré-visualização numa aba nova (o visualizador nativo do navegador já tem
@@ -449,6 +564,22 @@ export async function printOrderPdf(
   try {
     const doc = await generateOrderPdf(order);
     doc.save(orderPdfFileName(order));
+    const blobUrl = doc.output("bloburl") as unknown as string;
+    if (preview) preview.location.href = blobUrl;
+  } catch (err) {
+    preview?.close();
+    throw err;
+  }
+}
+
+/** Mesmo comportamento de `printOrderPdf`, para o cartão de mensagem (PDF 2). */
+export async function printCardPdf(
+  order: OrderPdfData,
+  preview: Window | null,
+): Promise<void> {
+  try {
+    const doc = await generateCardPdf(order);
+    doc.save(cardPdfFileName(order));
     const blobUrl = doc.output("bloburl") as unknown as string;
     if (preview) preview.location.href = blobUrl;
   } catch (err) {

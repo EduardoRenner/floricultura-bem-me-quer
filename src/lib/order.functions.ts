@@ -10,11 +10,17 @@ import { createServerFn } from "@tanstack/react-start";
 type OrderItemInput = { id?: string; name?: string; quantity: number; price?: number };
 
 type CreateOrderInput = {
+  // Quem compra/envia o presente.
   customer_name: string;
   customer_phone: string;
   customer_email?: string | null;
+  // Quem recebe o presente — pessoa diferente do comprador na maioria dos
+  // pedidos.
+  recipient_name: string;
+  recipient_phone?: string | null;
   delivery_type: "delivery" | "pickup";
   delivery_address?: Record<string, string> | null;
+  reference_point?: string | null;
   delivery_date?: string | null;
   delivery_time?: string | null;
   payment_method: string; // 'pix' | 'dinheiro' | 'cartao'
@@ -51,8 +57,14 @@ export const createOrder = createServerFn({ method: "POST" })
     if (!data.customer_name?.trim() || !data.customer_phone?.trim()) {
       throw new Error("Nome e telefone são obrigatórios");
     }
+    if (!data.recipient_name?.trim()) {
+      throw new Error("Nome de quem vai receber é obrigatório");
+    }
     if (data.delivery_type !== "delivery" && data.delivery_type !== "pickup") {
       throw new Error("Tipo de entrega inválido");
+    }
+    if (data.delivery_type === "delivery" && !data.recipient_phone?.trim()) {
+      throw new Error("Telefone de quem vai receber é obrigatório para entrega");
     }
 
     // Consolida por id: se o mesmo produto vier repetido, soma as quantidades
@@ -98,8 +110,11 @@ export const createOrder = createServerFn({ method: "POST" })
         customer_name: data.customer_name.trim().slice(0, 200),
         customer_phone: data.customer_phone.trim().slice(0, 40),
         customer_email: data.customer_email?.trim().slice(0, 200) || null,
+        recipient_name: data.recipient_name.trim().slice(0, 200),
+        recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
         delivery_type: data.delivery_type,
         delivery_address: data.delivery_address ?? null,
+        reference_point: data.reference_point?.trim().slice(0, 500) || null,
         delivery_date: data.delivery_date || null,
         delivery_time: data.delivery_time || null,
         payment_method: data.payment_method,
@@ -117,14 +132,15 @@ export const createOrder = createServerFn({ method: "POST" })
     const orderNumber = (row?.order_number as string) ?? null;
     const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
 
-    // Gera o PDF (dados do pedido + cartão + comprovante com QR) e sobe no
-    // bucket privado, devolvendo uma signed URL para ir na mensagem do
-    // WhatsApp. Best-effort: se falhar, o pedido já está gravado e o
-    // checkout segue sem o link — não pode travar o fechamento do pedido.
+    // Gera os dois PDFs (comprovante com valores + cartão de mensagem sem
+    // valores) e sobe no bucket privado, devolvendo signed URLs para ir na
+    // mensagem do WhatsApp. Best-effort: se falhar, o pedido já está gravado
+    // e o checkout segue sem o link — não pode travar o fechamento do pedido.
     let pdfUrl: string | null = null;
+    let cardPdfUrl: string | null = null;
     if (orderNumber) {
       const { generateAndStoreOrderPdf } = await import("@/lib/orderPdf.server");
-      pdfUrl = await generateAndStoreOrderPdf({
+      const urls = await generateAndStoreOrderPdf({
         orderNumber,
         createdAt: (row?.created_at as string) ?? new Date().toISOString(),
         status: "pendente",
@@ -133,17 +149,22 @@ export const createOrder = createServerFn({ method: "POST" })
         deliveryAddress: data.delivery_address ?? null,
         customerName: data.customer_name.trim(),
         customerPhone: data.customer_phone.trim(),
+        recipientName: data.recipient_name.trim(),
+        recipientPhone: data.recipient_phone?.trim() || null,
+        referencePoint: data.reference_point?.trim() || null,
         notes: null,
         deliveryInstructions: data.delivery_instructions?.trim() || null,
         cardMessage: data.card_message?.trim() || null,
         items,
         total,
       });
+      pdfUrl = urls.pdfUrl;
+      cardPdfUrl = urls.cardPdfUrl;
     }
 
     // Devolve os itens já precificados pelo servidor para o checkout montar a
     // mensagem do WhatsApp com os valores que realmente foram gravados.
-    return { orderNumber, items, total, pdfUrl };
+    return { orderNumber, items, total, pdfUrl, cardPdfUrl };
   });
 
 const RECEIVED_TYPE_LABELS: Record<string, string> = {
@@ -187,7 +208,7 @@ export const getOrderForDeliveryConfirmation = createServerFn({ method: "POST" }
     const { data: row, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "order_number,customer_name,delivery_type,delivery_address,delivered_confirmed_at,delivered_received_by,delivered_received_type",
+        "order_number,customer_name,recipient_name,delivery_type,delivery_address,delivered_confirmed_at,delivered_received_by,delivered_received_type",
       )
       .eq("order_number", orderNumber)
       .maybeSingle();
@@ -196,7 +217,9 @@ export const getOrderForDeliveryConfirmation = createServerFn({ method: "POST" }
     return {
       found: true as const,
       orderNumber: row.order_number as string,
-      customerName: row.customer_name as string,
+      // Pedidos antigos (antes de 2026-08-08) não têm recipient_name — cai
+      // para customer_name em vez de mostrar campo vazio pro entregador.
+      customerName: (row.recipient_name as string | null) || (row.customer_name as string),
       deliveryType: row.delivery_type as string,
       deliveryAddress: row.delivery_address as Record<string, string> | null,
       confirmed: Boolean(row.delivered_confirmed_at),

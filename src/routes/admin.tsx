@@ -260,6 +260,8 @@ type Order = {
   order_number: string;
   customer_name: string;
   customer_phone: string;
+  recipient_name: string | null;
+  recipient_phone: string | null;
   delivery_type: string;
   total: number;
   status: string;
@@ -272,6 +274,7 @@ type Order = {
   notes: string | null;
   delivery_instructions: string | null;
   card_message: string | null;
+  reference_point: string | null;
   payment_method: string;
   delivery_address: Record<string, string> | null;
 };
@@ -284,6 +287,30 @@ function OrdersTab({ token }: { token: string }) {
   const [filter, setFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
+  const [generatingCardId, setGeneratingCardId] = useState<string | null>(null);
+
+  function toOrderPdfData(o: Order) {
+    return {
+      orderNumber: o.order_number,
+      createdAt: o.created_at,
+      status: o.status,
+      paymentMethod: o.payment_method,
+      deliveryType: o.delivery_type,
+      deliveryAddress: o.delivery_address,
+      customerName: o.customer_name,
+      customerPhone: o.customer_phone,
+      // Pedido antigo (antes de 2026-08-08) não tem destinatário próprio —
+      // cai para o nome do comprador em vez de imprimir campo vazio.
+      recipientName: o.recipient_name || o.customer_name,
+      recipientPhone: o.recipient_phone,
+      referencePoint: o.reference_point,
+      notes: o.notes,
+      deliveryInstructions: o.delivery_instructions,
+      cardMessage: o.card_message,
+      items: o.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price ?? 0 })),
+      total: Number(o.total),
+    };
+  }
 
   const handleGeneratePdf = async (o: Order) => {
     // Abre a aba ANTES do import dinâmico — precisa acontecer na mesma pilha
@@ -298,28 +325,24 @@ function OrdersTab({ token }: { token: string }) {
       // configurações) por causa de um botão que a maioria das sessões nunca
       // clica.
       const { printOrderPdf } = await import("@/lib/orderPdf");
-      await printOrderPdf(
-        {
-          orderNumber: o.order_number,
-          createdAt: o.created_at,
-          status: o.status,
-          paymentMethod: o.payment_method,
-          deliveryType: o.delivery_type,
-          deliveryAddress: o.delivery_address,
-          customerName: o.customer_name,
-          customerPhone: o.customer_phone,
-          notes: o.notes,
-          deliveryInstructions: o.delivery_instructions,
-          cardMessage: o.card_message,
-          items: o.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price ?? 0 })),
-          total: Number(o.total),
-        },
-        preview,
-      );
+      await printOrderPdf(toOrderPdfData(o), preview);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao gerar PDF");
     } finally {
       setGeneratingPdfId(null);
+    }
+  };
+
+  const handleGenerateCardPdf = async (o: Order) => {
+    const preview = window.open("", "_blank");
+    setGeneratingCardId(o.id);
+    try {
+      const { printCardPdf } = await import("@/lib/orderPdf");
+      await printCardPdf(toOrderPdfData(o), preview);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar cartão");
+    } finally {
+      setGeneratingCardId(null);
     }
   };
 
@@ -450,11 +473,23 @@ function OrdersTab({ token }: { token: string }) {
                         </div>
                         <div>
                           <h4 className="mb-2 font-semibold">Detalhes</h4>
+                          <p className="text-sm">
+                            Enviado por: {o.customer_name} ({o.customer_phone})
+                          </p>
+                          <p className="text-sm">
+                            Destinatário: {o.recipient_name || o.customer_name}
+                            {o.recipient_phone ? ` (${o.recipient_phone})` : ""}
+                          </p>
                           <p className="text-sm">Pagamento: {o.payment_method}</p>
                           {o.delivery_address && (
                             <p className="text-sm text-muted-foreground">
                               {String(o.delivery_address.rua ?? "")}, {String(o.delivery_address.numero ?? "")} -{" "}
                               {String(o.delivery_address.bairro ?? "")}
+                            </p>
+                          )}
+                          {o.reference_point && (
+                            <p className="text-sm text-muted-foreground">
+                              Referência: {o.reference_point}
                             </p>
                           )}
                           <div className="mt-3">
@@ -488,6 +523,19 @@ function OrdersTab({ token }: { token: string }) {
                                 <Printer className="mr-2 h-4 w-4" />
                               )}
                               {generatingPdfId === o.id ? "Gerando…" : "Gerar PDF"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={generatingCardId === o.id}
+                              onClick={() => handleGenerateCardPdf(o)}
+                            >
+                              {generatingCardId === o.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Printer className="mr-2 h-4 w-4" />
+                              )}
+                              {generatingCardId === o.id ? "Gerando…" : "Gerar cartão"}
                             </Button>
                             <Button
                               variant="outline"
