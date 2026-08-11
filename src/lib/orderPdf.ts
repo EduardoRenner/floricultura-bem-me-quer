@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { ADDRESS, formatBRL } from "@/lib/shop";
 import { LOGO_DATA_URL } from "@/lib/logoDataUrl";
+import { TREVO_DATA_URL } from "@/lib/treboDataUrl";
 
 // Gera o PDF de um pedido pronto para impressão. Roda inteiramente no
 // navegador (a única tela que usa isto é o painel admin), então não precisa
@@ -505,7 +506,9 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   const contentH = nameBlockH + mensagemH + signatureBlockH;
 
   const contentTop = y;
-  const bottomLimit = frameMargin + frameH - 26;
+  // Reserva mais espaço no rodapé que antes (26mm) porque agora tem a frase
+  // da marca + os dois ícones (trevo + logo), não só o emblema de flor.
+  const bottomLimit = frameMargin + frameH - 36;
   const freeSpace = bottomLimit - contentTop;
   if (freeSpace > contentH) y += (freeSpace - contentH) / 2;
 
@@ -539,7 +542,34 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
     doc.text(`Com carinho, ${order.customerName}`, centerX, signatureY, { align: "center" });
   }
 
-  drawFlowerMotif(doc, centerX, frameMargin + frameH - 10, MOTIF_R);
+  // ---- Rodapé: frase da marca + raminho de trevos + logo ----
+  // Réplica do cartão de referência da dona: a assinatura da marca vai no pé
+  // da página, não mais um emblema geométrico genérico.
+  const footerQuoteY = frameMargin + frameH - 22;
+  doc.setFont("times", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(...CARD_GOLD_DARK);
+  doc.text('"Sempre encontre motivos para tudo o que for estar vivendo..."', centerX, footerQuoteY, {
+    align: "center",
+    maxWidth: frameW - 20,
+  });
+
+  const iconSize = 12;
+  const iconY = footerQuoteY + 5;
+  const iconGap = 2;
+  try {
+    doc.addImage(
+      TREVO_DATA_URL,
+      "PNG",
+      centerX - iconSize - iconGap,
+      iconY,
+      iconSize,
+      iconSize,
+    );
+    doc.addImage(LOGO_DATA_URL, "PNG", centerX + iconGap, iconY, iconSize, iconSize);
+  } catch {
+    // ícones embutidos corrompidos (não deveria acontecer) — segue sem eles.
+  }
 
   doc.setTextColor(0);
   return doc;
