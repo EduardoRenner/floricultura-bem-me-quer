@@ -483,8 +483,17 @@ function OrdersTab({ token }: { token: string }) {
                           <p className="text-sm">Pagamento: {o.payment_method}</p>
                           {o.delivery_address && (
                             <p className="text-sm text-muted-foreground">
-                              {String(o.delivery_address.rua ?? "")}, {String(o.delivery_address.numero ?? "")} -{" "}
-                              {String(o.delivery_address.bairro ?? "")}
+                              {/* Pedidos novos gravam o endereço inteiro em `rua`; pedidos
+                                  antigos (antes da simplificação do checkout) ainda têm
+                                  numero/bairro separados. filter+join mostra os dois formatos
+                                  sem vírgula ou traço sobrando quando um campo está vazio. */}
+                              {[
+                                o.delivery_address.rua,
+                                o.delivery_address.numero,
+                                o.delivery_address.bairro,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
                             </p>
                           )}
                           {o.reference_point && (

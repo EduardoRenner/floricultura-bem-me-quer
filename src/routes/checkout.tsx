@@ -15,13 +15,6 @@ import { ADDRESS, formatBRL, WHATSAPP_URL } from "@/lib/shop";
 import { createOrder } from "@/lib/order.functions";
 import { getPublicSettings } from "@/lib/settings.functions";
 
-// Converte a data do input (YYYY-MM-DD) para o formato brasileiro DD/MM/AAAA.
-function formatDateBR(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
-  if (!m) return iso;
-  return `${m[3]}/${m[2]}/${m[1]}`;
-}
-
 // Mapeia os valores da tela para os aceitos pelo banco.
 const PAYMENT_DB: Record<string, string> = {
   Dinheiro: "dinheiro",
@@ -68,25 +61,18 @@ function CheckoutPage() {
     const fd = new FormData(e.currentTarget);
     setSubmitting(true);
 
-    // Validate required fields
+    // Formulário simplificado: um único telefone de contato (não mais
+    // comprador + destinatário separados) e um único campo de endereço em
+    // texto livre (não mais rua/número/bairro/CEP/complemento divididos).
+    // O objetivo é reduzir o que a cliente precisa digitar no celular.
     const name = String(fd.get("name") ?? "").trim();
-    const phone = String(fd.get("phone") ?? "").trim();
-    const email = (fd.get("email") as string)?.trim() || "";
     const recipientName = String(fd.get("recipient_name") ?? "").trim();
-    const recipientPhone = String(fd.get("recipient_phone") ?? "").trim();
+    const contactPhone = String(fd.get("contact_phone") ?? "").trim();
+    const endereco = String(fd.get("endereco") ?? "").trim();
+    const referencePoint = String(fd.get("reference_point") ?? "").trim();
 
     if (name.length < 2) {
       toast.error("Por favor, informe seu nome completo.");
-      setSubmitting(false);
-      return;
-    }
-    if (phone.replace(/\D/g, "").length < 10) {
-      toast.error("Informe um telefone válido com DDD.");
-      setSubmitting(false);
-      return;
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error("Informe um e-mail válido.");
       setSubmitting(false);
       return;
     }
@@ -95,28 +81,17 @@ function CheckoutPage() {
       setSubmitting(false);
       return;
     }
-    // Campos do endereço / extras
-    const rua = String(fd.get("rua") ?? "").trim();
-    const numero = String(fd.get("numero") ?? "").trim();
-    const bairro = String(fd.get("bairro") ?? "").trim();
-    const referencePoint = String(fd.get("reference_point") ?? "").trim();
-
-    if (deliveryType === "delivery" && (!rua || !numero || !bairro)) {
+    if (contactPhone.replace(/\D/g, "").length < 10) {
+      toast.error("Informe um telefone válido com DDD.");
+      setSubmitting(false);
+      return;
+    }
+    if (deliveryType === "delivery" && !endereco) {
       toast.error("Preencha o endereço completo para entrega.");
       setSubmitting(false);
       return;
     }
-    if (deliveryType === "delivery" && recipientPhone.replace(/\D/g, "").length < 10) {
-      toast.error("Informe o telefone de quem vai receber, com DDD.");
-      setSubmitting(false);
-      return;
-    }
 
-    const cep = String(fd.get("cep") ?? "").trim();
-    const complemento = String(fd.get("complemento") ?? "").trim();
-    const dateRaw = String(fd.get("date") ?? "").trim();
-    const timeRaw = String(fd.get("time") ?? "").trim();
-    const deliveryInstructions = String(fd.get("delivery_instructions") ?? "").trim();
     const cardMessage = String(fd.get("card_message") ?? "").trim().slice(0, 200);
     const paymentLabel = String(fd.get("payment") ?? "Pix");
     const paymentDb = PAYMENT_DB[paymentLabel] ?? "pix";
@@ -154,18 +129,21 @@ function CheckoutPage() {
       const res = await createOrderFn({
         data: {
           customer_name: name,
-          customer_phone: phone,
-          customer_email: email || null,
+          // `customer_phone` é a única coluna de telefone que o banco exige
+          // (NOT NULL). Com o formulário reduzido a um telefone só, ele
+          // preenche as duas colunas — é o mesmo número de contato de
+          // qualquer forma.
+          customer_phone: contactPhone,
+          customer_email: null,
           recipient_name: recipientName,
-          recipient_phone: recipientPhone || null,
+          recipient_phone: contactPhone,
           delivery_type: deliveryType,
-          delivery_address:
-            deliveryType === "delivery" ? { rua, numero, bairro, cep, complemento } : null,
+          delivery_address: deliveryType === "delivery" ? { rua: endereco } : null,
           reference_point: referencePoint || null,
-          delivery_date: dateRaw || null,
-          delivery_time: timeRaw || null,
+          delivery_date: null,
+          delivery_time: null,
           payment_method: paymentDb,
-          delivery_instructions: deliveryInstructions || null,
+          delivery_instructions: null,
           card_message: cardMessage || null,
           items: dbItems,
         },
@@ -191,42 +169,31 @@ function CheckoutPage() {
 
     const deliveryLine =
       deliveryType === "delivery"
-        ? `*Entrega*\n  Endereço: ${rua}, ${numero} - ${bairro}${cep ? " · CEP " + cep : ""}${complemento ? " · " + complemento : ""}${referencePoint ? "\n  Ponto de referência: " + referencePoint : ""}\n  (Taxa de entrega a combinar)`
+        ? `*Entrega*\n  Endereço: ${endereco}${referencePoint ? "\n  Ponto de referência: " + referencePoint : ""}\n  (Taxa de entrega a combinar)`
         : `*Retirada na loja*`;
 
-    const dateLine = dateRaw
-      ? `*Data desejada:* ${formatDateBR(dateRaw)}${timeRaw ? " às " + timeRaw : ""}`
-      : "";
-
-    const paymentLine = `*Pagamento:* ${paymentLabel}`;
-    const instructionsLine = deliveryInstructions
-      ? `*Instruções de entrega:* ${deliveryInstructions}`
-      : "";
-    const cardMessageLine = cardMessage ? `*Mensagem do cartão:* ${cardMessage}` : "";
+    const paymentLine = `*Forma de pagamento:* ${paymentLabel}`;
+    const cardMessageLine = cardMessage ? `*Conteúdo do cartão:* ${cardMessage}` : "";
 
     const message = [
       `*Novo Pedido — ${orderNumber}*`,
       ``,
-      `*Enviado por:* ${name}`,
-      `*Telefone de quem envia:* ${phone}`,
-      email ? `*E-mail:* ${email}` : "",
-      ``,
-      `*Destinatário:* ${recipientName}`,
-      deliveryType === "delivery" ? `*Telefone de quem recebe:* ${recipientPhone}` : "",
+      `*Para:* ${recipientName}`,
+      `*Telefone para contato da pessoa que vai receber:* ${contactPhone}`,
       ``,
       `*Itens:*`,
       itemLines,
       ``,
       deliveryLine,
-      dateLine,
       paymentLine,
-      instructionsLine,
       cardMessageLine,
       ``,
       `*Total: ${formatBRL(finalTotal)}*`,
       ``,
       pdfUrl ? `*Comprovante do pedido (uso interno):* ${pdfUrl}` : "",
       cardPdfUrl ? `*Cartão de mensagem (imprimir e enviar com o presente):* ${cardPdfUrl}` : "",
+      ``,
+      `*Seu nome:* ${name}`,
       ``,
       `Pedido feito pelo site — Floricultura Bem Me Quer`,
     ]
@@ -259,49 +226,13 @@ function CheckoutPage() {
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
           <form onSubmit={submit} className="space-y-8">
-            {/* Cliente */}
-            <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <h2 className="font-display text-xl">Seus dados</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Para garantirmos a entrega do seu presente em Maravilha-SC, por gentileza nos
-                informe seus dados e os de quem vai receber.
-              </p>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>Seu nome *</Label>
-                  <Input required name="name" />
-                </div>
-                <div>
-                  <Label>Seu telefone *</Label>
-                  <Input required name="phone" placeholder="(49) 9 9999-9999" />
-                </div>
-                <div className="md:col-span-2">
-                  <Label>E-mail</Label>
-                  <Input type="email" name="email" />
-                </div>
-              </div>
-            </section>
-
-            {/* Destinatário */}
-            <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <h2 className="font-display text-xl">Quem vai receber</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>Nome completo de quem vai receber *</Label>
-                  <Input required name="recipient_name" />
-                </div>
-                {deliveryType === "delivery" ? (
-                  <div>
-                    <Label>Telefone de quem vai receber *</Label>
-                    <Input required name="recipient_phone" placeholder="(49) 9 9999-9999" />
-                  </div>
-                ) : null}
-              </div>
-            </section>
-
-            {/* Entrega */}
+            {/* Entrega — vem primeiro porque decide quais campos abaixo aparecem */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
               <h2 className="font-display text-xl">Entrega</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Para garantirmos a entrega do seu presente em Maravilha-SC, por gentileza nos
+                informe os dados abaixo.
+              </p>
               <RadioGroup
                 value={deliveryType}
                 onValueChange={(v) => setDeliveryType(v as "delivery" | "pickup")}
@@ -339,34 +270,7 @@ function CheckoutPage() {
                 </label>
               </RadioGroup>
 
-              {deliveryType === "delivery" ? (
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  <div className="md:col-span-2">
-                    <Label>Rua *</Label>
-                    <Input required name="rua" />
-                  </div>
-                  <div>
-                    <Label>Número *</Label>
-                    <Input required name="numero" />
-                  </div>
-                  <div>
-                    <Label>Bairro *</Label>
-                    <Input required name="bairro" />
-                  </div>
-                  <div>
-                    <Label>CEP</Label>
-                    <Input name="cep" />
-                  </div>
-                  <div>
-                    <Label>Complemento</Label>
-                    <Input name="complemento" />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Ponto de referência</Label>
-                    <Input name="reference_point" placeholder="Ex.: perto do mercado tal, casa amarela…" />
-                  </div>
-                </div>
-              ) : (
+              {deliveryType === "pickup" && (
                 <div className="mt-5 rounded-lg bg-secondary/50 p-4 text-sm">
                   <div className="flex items-start gap-2">
                     <MapPin className="mt-0.5 h-4 w-4 text-primary" />
@@ -377,49 +281,62 @@ function CheckoutPage() {
                   </p>
                 </div>
               )}
+            </section>
 
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {/* Para quem é o presente — só o que precisa pra entregar */}
+            <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+              <h2 className="font-display text-xl">Para quem é o presente</h2>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label>Data desejada</Label>
-                  <Input type="date" name="date" />
+                  <Label>Nome completo *</Label>
+                  <Input required name="recipient_name" placeholder="Quem vai receber" />
                 </div>
                 <div>
-                  <Label>Horário</Label>
-                  <Input type="time" name="time" />
+                  <Label>
+                    {deliveryType === "delivery"
+                      ? "Telefone para contato da pessoa que vai receber *"
+                      : "Telefone para contato *"}
+                  </Label>
+                  <Input required name="contact_phone" placeholder="(49) 9 9999-9999" />
                 </div>
+                {deliveryType === "delivery" && (
+                  <>
+                    <div className="md:col-span-2">
+                      <Label>Endereço completo *</Label>
+                      <Input
+                        required
+                        name="endereco"
+                        placeholder="Rua, número, bairro, complemento, CEP"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Ponto de referência</Label>
+                      <Input
+                        name="reference_point"
+                        placeholder="Ex.: perto do mercado tal, casa amarela…"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </section>
 
-            {/* Notas */}
+            {/* Cartão */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <h2 className="font-display text-xl">Observações</h2>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <Label>Instruções de entrega</Label>
-                  <Textarea
-                    name="delivery_instructions"
-                    className="mt-2"
-                    rows={2}
-                    placeholder="Horário preferido, ponto de referência…"
-                  />
-                </div>
-                <div>
-                  <Label>Mensagem para o cartão</Label>
-                  <Textarea
-                    name="card_message"
-                    className="mt-2"
-                    rows={3}
-                    maxLength={200}
-                    placeholder="O que vai escrito no cartão que acompanha as flores…"
-                  />
-                  <p className="mt-1 text-right text-xs text-muted-foreground">Até 200 caracteres</p>
-                </div>
-              </div>
+              <h2 className="font-display text-xl">Conteúdo do cartão</h2>
+              <Textarea
+                name="card_message"
+                className="mt-4"
+                rows={3}
+                maxLength={200}
+                placeholder="O que vai escrito no cartão que acompanha as flores…"
+              />
+              <p className="mt-1 text-right text-xs text-muted-foreground">Até 200 caracteres</p>
             </section>
 
             {/* Pagamento */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <h2 className="font-display text-xl">Pagamento</h2>
+              <h2 className="font-display text-xl">Forma de pagamento</h2>
               <RadioGroup name="payment" defaultValue="Pix" className="mt-4 grid gap-3 md:grid-cols-3">
                 {["Dinheiro", "Pix", "Cartão"].map((m) => (
                   <label
@@ -431,6 +348,15 @@ function CheckoutPage() {
                   </label>
                 ))}
               </RadioGroup>
+            </section>
+
+            {/* Seu nome — por último, como no modelo de mensagem que a loja já usa */}
+            <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+              <h2 className="font-display text-xl">Seu nome</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Quem está enviando o presente.</p>
+              <div className="mt-4">
+                <Input required name="name" placeholder="Seu nome completo" />
+              </div>
             </section>
 
             <Button type="submit" size="lg" className="w-full" disabled={submitting}>
