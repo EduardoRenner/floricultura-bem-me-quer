@@ -179,7 +179,7 @@ function CheckoutPage() {
       `*Novo Pedido — ${orderNumber}*`,
       ``,
       `*Para:* ${recipientName}`,
-      `*Telefone para contato da pessoa que vai receber:* ${contactPhone}`,
+      `*Telefone para contato:* ${contactPhone}`,
       ``,
       `*Itens:*`,
       itemLines,
@@ -283,20 +283,30 @@ function CheckoutPage() {
               )}
             </section>
 
-            {/* Para quem é o presente — só o que precisa pra entregar */}
+            {/* Para quem é o presente — só o nome, pra identificar o destinatário
+                no cartão. Dado operacional (telefone, endereço) fica com quem
+                está comprando, não com quem recebe: em presente de surpresa a
+                loja precisa falar com quem organizou, não ligar pra pessoa que
+                vai ser presenteada. */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
               <h2 className="font-display text-xl">Para quem é o presente</h2>
+              <div className="mt-4">
+                <Label>Nome completo *</Label>
+                <Input required name="recipient_name" placeholder="Quem vai receber" />
+              </div>
+            </section>
+
+            {/* Seus dados — o bloco detalhado. É quem compra que a loja
+                contata pra combinar entrega, frete e qualquer detalhe. */}
+            <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
+              <h2 className="font-display text-xl">Seus dados</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label>Nome completo *</Label>
-                  <Input required name="recipient_name" placeholder="Quem vai receber" />
+                  <Label>Seu nome *</Label>
+                  <Input required name="name" placeholder="Seu nome completo" />
                 </div>
                 <div>
-                  <Label>
-                    {deliveryType === "delivery"
-                      ? "Telefone para contato da pessoa que vai receber *"
-                      : "Telefone para contato *"}
-                  </Label>
+                  <Label>Seu telefone para contato *</Label>
                   <Input required name="contact_phone" placeholder="(49) 9 9999-9999" />
                 </div>
                 {deliveryType === "delivery" && (
@@ -348,15 +358,6 @@ function CheckoutPage() {
                   </label>
                 ))}
               </RadioGroup>
-            </section>
-
-            {/* Seu nome — por último, como no modelo de mensagem que a loja já usa */}
-            <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <h2 className="font-display text-xl">Seu nome</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Quem está enviando o presente.</p>
-              <div className="mt-4">
-                <Input required name="name" placeholder="Seu nome completo" />
-              </div>
             </section>
 
             <Button type="submit" size="lg" className="w-full" disabled={submitting}>
