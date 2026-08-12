@@ -413,11 +413,41 @@ async function addDeliveryConfirmationBlock(
   }
 }
 
-// Paleta do cartão — mesmo tom dourado/creme do bloco de destaque que já
-// existia no comprovante, para manter a identidade visual da loja.
+// Paleta do cartão. Dourado/creme já existia no comprovante; o verde é novo
+// aqui — é o mesmo verde de fundo da logo real (o selo redondo), puxado pro
+// cartão como faixa de destaque, pra ligar visualmente os dois sem precisar
+// repetir a imagem da logo em cima.
 const CARD_GOLD_DARK: [number, number, number] = [120, 90, 40];
 const CARD_GOLD: [number, number, number] = [200, 170, 120];
 const CARD_CREAM: [number, number, number] = [253, 250, 244];
+const CARD_GREEN: [number, number, number] = [34, 46, 27];
+
+/** Losango dourado preenchido — o "◆" entre as duas linhas do friso ornamental. */
+function drawDiamond(doc: jsPDF, cx: number, cy: number, r: number): void {
+  doc.setFillColor(...CARD_GOLD);
+  doc.triangle(cx, cy - r, cx + r, cy, cx, cy + r, "F");
+  doc.triangle(cx, cy - r, cx - r, cy, cx, cy + r, "F");
+}
+
+/** Friso ornamental "— ◆ —", usado para separar os blocos do cartão. */
+function drawFlourishDivider(doc: jsPDF, cx: number, y: number, armLength: number): void {
+  doc.setDrawColor(...CARD_GOLD);
+  doc.setLineWidth(0.3);
+  doc.line(cx - armLength - 3, y, cx - 3, y);
+  doc.line(cx + 3, y, cx + armLength + 3, y);
+  drawDiamond(doc, cx, y, 1.6);
+}
+
+/** Marca decorativa de canto — dois traços em L + um ponto, estilo convite. */
+function drawCornerFlourish(doc: jsPDF, cx: number, cy: number, signX: 1 | -1, signY: 1 | -1): void {
+  const len = 8;
+  doc.setDrawColor(...CARD_GOLD);
+  doc.setLineWidth(0.35);
+  doc.line(cx, cy, cx + signX * len, cy);
+  doc.line(cx, cy, cx, cy + signY * len);
+  doc.setFillColor(...CARD_GOLD);
+  doc.circle(cx, cy, 0.8, "F");
+}
 
 /**
  * Gera o cartão de mensagem: PDF 2, o que acompanha o presente e pode ser
@@ -445,27 +475,35 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   doc.setLineWidth(0.2);
   doc.roundedRect(frameMargin + 3, frameMargin + 3, frameW - 6, frameH - 6, 3, 3, "S");
 
-  // Sem logo nem emblema decorativo aqui em cima — pedido direto da dona: a
-  // logo não fica no início do cartão. A moldura dourada já dá o acabamento;
-  // o nome da loja abre o cartão sozinho. A logo de verdade só aparece como
-  // marca d'água no rodapé, junto do trevo (ver mais abaixo).
-  let y = frameMargin + 26;
+  // Quatro marcas de canto — o toque de convite que faltava na moldura lisa.
+  drawCornerFlourish(doc, frameMargin + 9, frameMargin + 9, 1, 1);
+  drawCornerFlourish(doc, PAGE_WIDTH - frameMargin - 9, frameMargin + 9, -1, 1);
+  drawCornerFlourish(doc, frameMargin + 9, frameMargin + frameH - 9, 1, -1);
+  drawCornerFlourish(doc, PAGE_WIDTH - frameMargin - 9, frameMargin + frameH - 9, -1, -1);
 
+  // ---- Faixa com o nome da loja: verde + dourado, as cores da logo real —
+  // sem repetir a imagem em cima (a dona pediu pra logo não ficar no início),
+  // mas a paleta já entrega a mesma identidade. ----
+  const bannerY = frameMargin + 11;
+  const bannerH = 20;
+  doc.setFillColor(...CARD_GREEN);
+  doc.roundedRect(frameMargin + 10, bannerY, frameW - 20, bannerH, 2.5, 2.5, "F");
+  doc.setDrawColor(...CARD_GOLD);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(frameMargin + 10, bannerY, frameW - 20, bannerH, 2.5, 2.5, "S");
   doc.setFont("times", "bold");
   doc.setFontSize(18);
-  doc.setTextColor(...CARD_GOLD_DARK);
-  doc.text("Floricultura Bem Me Quer", centerX, y, { align: "center" });
-  y += 11;
+  doc.setTextColor(...CARD_GOLD);
+  doc.text("Floricultura Bem Me Quer", centerX, bannerY + bannerH / 2 + 3, { align: "center" });
 
-  doc.setDrawColor(...CARD_GOLD);
-  doc.setLineWidth(0.3);
-  doc.line(centerX - 22, y, centerX + 22, y);
+  let y = bannerY + bannerH + 12;
+  drawFlourishDivider(doc, centerX, y, 20);
   y += 14;
 
-  // Cabeçalho (emblema + nome da loja) fica fixo perto do topo; o bloco
-  // pessoal (destinatário + mensagem + assinatura) é centralizado no espaço
-  // que sobra até o rodapé — assim nem cola tudo em cima nem sobra um vão
-  // vazio gigante no meio, seja a mensagem curta ou longa.
+  // Cabeçalho (faixa + friso) fica fixo perto do topo; o bloco pessoal
+  // (destinatário + mensagem + assinatura) é centralizado no espaço que sobra
+  // até o rodapé — assim nem cola tudo em cima nem sobra um vão vazio gigante
+  // no meio, seja a mensagem curta ou longa.
   const mensagem = order.cardMessage?.trim() || "—";
   const linhasMensagem = doc.splitTextToSize(mensagem, frameW - 30) as string[];
   const lineHeight = 8.5;
@@ -476,9 +514,9 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   const contentH = nameBlockH + mensagemH + signatureBlockH;
 
   const contentTop = y;
-  // Reserva mais espaço no rodapé que antes (26mm) porque agora tem a frase
-  // da marca + os dois ícones (trevo + logo), não só o emblema de flor.
-  const bottomLimit = frameMargin + frameH - 36;
+  // Reserva espaço no rodapé pro friso + frase da marca + logo em marca
+  // d'água (ver mais abaixo).
+  const bottomLimit = frameMargin + frameH - 42;
   const freeSpace = bottomLimit - contentTop;
   if (freeSpace > contentH) y += (freeSpace - contentH) / 2;
 
@@ -512,10 +550,12 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
     doc.text(`Com carinho, ${order.customerName}`, centerX, signatureY, { align: "center" });
   }
 
-  // ---- Rodapé: frase da marca + logo, sozinha, como marca d'água ----
+  // ---- Rodapé: friso + frase da marca + logo, sozinha, como marca d'água ----
   // Só a logo da Bem Me Quer — nada mais ao lado dela. O raminho de trevos
   // que ficava aqui é uma foto de estoque, sem relação com a marca; competia
   // com a logo e lia como um segundo emblema.
+  drawFlourishDivider(doc, centerX, frameMargin + frameH - 34, 16);
+
   const footerQuoteY = frameMargin + frameH - 22;
   doc.setFont("times", "italic");
   doc.setFontSize(9);
