@@ -1,4 +1,4 @@
-import { jsPDF } from "jspdf";
+import { jsPDF, GState } from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { ADDRESS, formatBRL } from "@/lib/shop";
@@ -471,15 +471,11 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   const MOTIF_R = 2.8; // mesmo raio no topo e no rodapé — moldura simétrica
   let y = frameMargin + 16;
 
+  // A logo NÃO fica mais aqui em cima — pedido da dona: no início do cartão
+  // só o emblema de flor e o nome da loja; a logo de verdade vira marca
+  // d'água só no rodapé, junto do trevo (ver mais abaixo).
   drawFlowerMotif(doc, centerX, y, MOTIF_R);
-  y += 14;
-
-  try {
-    doc.addImage(LOGO_DATA_URL, "PNG", centerX - 11, y, 22, 22);
-    y += 22 + 10; // altura da imagem + respiro antes do título, pra não colar
-  } catch {
-    // logo embutida corrompida (não deveria acontecer) — segue sem ela.
-  }
+  y += 20;
 
   doc.setFont("times", "bold");
   doc.setFontSize(18);
@@ -492,9 +488,9 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   doc.line(centerX - 22, y, centerX + 22, y);
   y += 14;
 
-  // Cabeçalho (logo + nome da loja) fica fixo perto do topo; o bloco pessoal
-  // (destinatário + mensagem + assinatura) é centralizado no espaço que sobra
-  // até o emblema do rodapé — assim nem cola tudo em cima nem sobra um vão
+  // Cabeçalho (emblema + nome da loja) fica fixo perto do topo; o bloco
+  // pessoal (destinatário + mensagem + assinatura) é centralizado no espaço
+  // que sobra até o rodapé — assim nem cola tudo em cima nem sobra um vão
   // vazio gigante no meio, seja a mensagem curta ou longa.
   const mensagem = order.cardMessage?.trim() || "—";
   const linhasMensagem = doc.splitTextToSize(mensagem, frameW - 30) as string[];
@@ -566,7 +562,13 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
       iconSize,
       iconSize,
     );
+    // A logo aqui é marca d'água, não ícone de mesmo peso que o trevo —
+    // opacidade reduzida é o que faz ela ler como assinatura discreta no
+    // rodapé em vez de repetir o mesmo carimbo que já saiu do topo.
+    doc.saveGraphicsState();
+    doc.setGState(new GState({ opacity: 0.35 }));
     doc.addImage(LOGO_DATA_URL, "PNG", centerX + iconGap, iconY, iconSize, iconSize);
+    doc.restoreGraphicsState();
   } catch {
     // ícones embutidos corrompidos (não deveria acontecer) — segue sem eles.
   }

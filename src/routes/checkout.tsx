@@ -311,22 +311,47 @@ function CheckoutPage() {
             </section>
 
             {isGift && (
-              /* Só o nome, pra identificar o destinatário no cartão. Dado
-                 operacional (telefone, endereço) fica com quem está
-                 comprando, não com quem recebe: em presente de surpresa a
-                 loja precisa falar com quem organizou, não ligar pra pessoa
-                 que vai ser presenteada. */
+              /* Presente: quem recebe é quem tem o endereço, não quem compra
+                 — é pra lá que a entrega precisa ir. Antes esses dois campos
+                 ficavam no bloco "Seus dados" mesmo com o toggle ligado, e o
+                 buquê acabava indo pro endereço de quem comprou em vez de
+                 quem ia receber. Telefone continua só com quem compra: em
+                 presente de surpresa a loja precisa falar com quem organizou,
+                 não ligar pra pessoa que vai ser presenteada. */
               <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
                 <h2 className="font-display text-xl">Para quem é o presente</h2>
-                <div className="mt-4">
-                  <Label>Nome completo *</Label>
-                  <Input required name="recipient_name" placeholder="Quem vai receber" />
+                <div className="mt-4 grid gap-4">
+                  <div>
+                    <Label>Nome completo *</Label>
+                    <Input required name="recipient_name" placeholder="Quem vai receber" />
+                  </div>
+                  {deliveryType === "delivery" && (
+                    <>
+                      <div>
+                        <Label>Endereço completo *</Label>
+                        <Input
+                          required
+                          name="endereco"
+                          placeholder="Rua, número, bairro, complemento, CEP"
+                        />
+                      </div>
+                      <div>
+                        <Label>Ponto de referência</Label>
+                        <Input
+                          name="reference_point"
+                          placeholder="Ex.: perto do mercado tal, casa amarela…"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               </section>
             )}
 
-            {/* Seus dados — o bloco detalhado. É quem compra que a loja
-                contata pra combinar entrega, frete e qualquer detalhe. */}
+            {/* Seus dados — quem a loja contata pra combinar qualquer coisa
+                do pedido. Sem presente, é a mesma pessoa que recebe, então o
+                endereço fica aqui; com presente, o endereço sobe pro bloco
+                acima e aqui fica só nome e telefone de contato. */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
               <h2 className="font-display text-xl">Seus dados</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -338,7 +363,7 @@ function CheckoutPage() {
                   <Label>Seu telefone para contato *</Label>
                   <Input required name="contact_phone" placeholder="(49) 9 9999-9999" />
                 </div>
-                {deliveryType === "delivery" && (
+                {!isGift && deliveryType === "delivery" && (
                   <>
                     <div className="md:col-span-2">
                       <Label>Endereço completo *</Label>
