@@ -3,7 +3,6 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { ADDRESS, formatBRL } from "@/lib/shop";
 import { LOGO_DATA_URL } from "@/lib/logoDataUrl";
-import { TREVO_DATA_URL } from "@/lib/treboDataUrl";
 
 // Gera o PDF de um pedido pronto para impressão. Roda inteiramente no
 // navegador (a única tela que usa isto é o painel admin), então não precisa
@@ -513,9 +512,10 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
     doc.text(`Com carinho, ${order.customerName}`, centerX, signatureY, { align: "center" });
   }
 
-  // ---- Rodapé: frase da marca + raminho de trevos + logo ----
-  // Réplica do cartão de referência da dona: a assinatura da marca vai no pé
-  // da página, não mais um emblema geométrico genérico.
+  // ---- Rodapé: frase da marca + logo, sozinha, como marca d'água ----
+  // Só a logo da Bem Me Quer — nada mais ao lado dela. O raminho de trevos
+  // que ficava aqui é uma foto de estoque, sem relação com a marca; competia
+  // com a logo e lia como um segundo emblema.
   const footerQuoteY = frameMargin + frameH - 22;
   doc.setFont("times", "italic");
   doc.setFontSize(9);
@@ -525,27 +525,17 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
     maxWidth: frameW - 20,
   });
 
-  const iconSize = 12;
+  const iconSize = 14;
   const iconY = footerQuoteY + 5;
-  const iconGap = 2;
   try {
-    doc.addImage(
-      TREVO_DATA_URL,
-      "PNG",
-      centerX - iconSize - iconGap,
-      iconY,
-      iconSize,
-      iconSize,
-    );
-    // A logo aqui é marca d'água, não ícone de mesmo peso que o trevo —
-    // opacidade reduzida é o que faz ela ler como assinatura discreta no
-    // rodapé em vez de repetir o mesmo carimbo que já saiu do topo.
+    // Opacidade reduzida é o que faz a logo ler como assinatura discreta no
+    // rodapé, marca d'água, em vez de um carimbo cheio repetido.
     doc.saveGraphicsState();
     doc.setGState(new GState({ opacity: 0.35 }));
-    doc.addImage(LOGO_DATA_URL, "PNG", centerX + iconGap, iconY, iconSize, iconSize);
+    doc.addImage(LOGO_DATA_URL, "PNG", centerX - iconSize / 2, iconY, iconSize, iconSize);
     doc.restoreGraphicsState();
   } catch {
-    // ícones embutidos corrompidos (não deveria acontecer) — segue sem eles.
+    // logo embutida corrompida (não deveria acontecer) — segue sem ela.
   }
 
   doc.setTextColor(0);
