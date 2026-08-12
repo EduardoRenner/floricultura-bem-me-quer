@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Gift, MapPin, MessageCircle, Store, Truck } from "lucide-react";
+import { CheckCircle2, MapPin, MessageCircle, Store, Truck } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useServerFn } from "@tanstack/react-start";
 import { useCart } from "@/lib/cart";
 import { ADDRESS, formatBRL, WHATSAPP_URL } from "@/lib/shop";
@@ -38,10 +37,6 @@ function CheckoutPage() {
   // a cliente depois, então não entra no cálculo do total aqui nem no servidor.
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
   const [submitting, setSubmitting] = useState(false);
-  // Desligado por padrão: a maioria compra pra si mesma, e pedir nome de
-  // destinatário + mensagem de cartão nesse caso é campo sem uso nenhum.
-  // Só quando a pessoa liga o toggle é que esses dois campos aparecem.
-  const [isGift, setIsGift] = useState(false);
 
   const total = subtotal;
 
@@ -66,14 +61,13 @@ function CheckoutPage() {
     const fd = new FormData(e.currentTarget);
     setSubmitting(true);
 
-    // Formulário simplificado: um único telefone de contato (não mais
-    // comprador + destinatário separados) e um único campo de endereço em
-    // texto livre (não mais rua/número/bairro/CEP/complemento divididos).
-    // O objetivo é reduzir o que a cliente precisa digitar no celular.
+    // Quem compra só informa nome e telefone de contato — é só quem a loja
+    // liga se precisar combinar algo. Todo o resto (nome de quem recebe,
+    // endereço da entrega, referência, cartão) é sempre da pessoa que vai
+    // receber a mercadoria, mesmo quando é a mesma pessoa que comprou — não
+    // depende de nenhuma escolha na tela, é sempre a mesma seção.
     const name = String(fd.get("name") ?? "").trim();
-    // Sem o toggle de presente ligado, quem recebe é quem compra — o campo
-    // nem aparece na tela, então não faz sentido exigir preenchimento dele.
-    const recipientName = isGift ? String(fd.get("recipient_name") ?? "").trim() : name;
+    const recipientName = String(fd.get("recipient_name") ?? "").trim();
     const contactPhone = String(fd.get("contact_phone") ?? "").trim();
     const endereco = String(fd.get("endereco") ?? "").trim();
     const referencePoint = String(fd.get("reference_point") ?? "").trim();
@@ -83,7 +77,7 @@ function CheckoutPage() {
       setSubmitting(false);
       return;
     }
-    if (isGift && recipientName.length < 2) {
+    if (recipientName.length < 2) {
       toast.error("Informe o nome completo de quem vai receber.");
       setSubmitting(false);
       return;
@@ -290,68 +284,57 @@ function CheckoutPage() {
               )}
             </section>
 
-            {/* Toggle opcional: por padrão o pedido é pra quem está comprando,
-                e os dois campos abaixo (destinatário, cartão) ficam fora da
-                tela — pra não sobrecarregar quem só quer comprar pra si.
-                Só aparecem quando a pessoa liga o toggle. */}
+            {/* Quem vai receber — nome, endereço, referência e cartão são
+                sempre daqui, não de quem compra. É pra esta pessoa que a
+                mercadoria precisa ir, mesmo quando é a mesma pessoa que está
+                comprando (aí ela só escreve o próprio nome de novo). Nenhum
+                desses campos depende de escolha nenhuma — é sempre esta a
+                seção que carrega o endereço da entrega. */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <label className="flex cursor-pointer items-start justify-between gap-4">
-                <span className="flex items-start gap-3">
-                  <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <span>
-                    <span className="font-display text-lg">É um presente para alguém?</span>
-                    <span className="block text-sm text-muted-foreground">
-                      Ligue para informar o nome de quem vai receber e, se quiser,
-                      uma mensagem para o cartão.
-                    </span>
-                  </span>
-                </span>
-                <Switch checked={isGift} onCheckedChange={setIsGift} className="mt-1 shrink-0" />
-              </label>
+              <h2 className="font-display text-xl">Quem vai receber</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Preencha os dados de quem vai receber as flores — mesmo que seja você.
+              </p>
+              <div className="mt-4 grid gap-4">
+                <div>
+                  <Label>Nome completo *</Label>
+                  <Input required name="recipient_name" placeholder="Quem vai receber" />
+                </div>
+                {deliveryType === "delivery" && (
+                  <>
+                    <div>
+                      <Label>Endereço da entrega *</Label>
+                      <Input
+                        required
+                        name="endereco"
+                        placeholder="Rua, número, bairro, complemento, CEP"
+                      />
+                    </div>
+                    <div>
+                      <Label>Ponto de referência</Label>
+                      <Input
+                        name="reference_point"
+                        placeholder="Ex.: perto do mercado tal, casa amarela…"
+                      />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <Label>Mensagem no cartão (opcional)</Label>
+                  <Textarea
+                    name="card_message"
+                    className="mt-1.5"
+                    rows={3}
+                    maxLength={200}
+                    placeholder="O que vai escrito no cartão que acompanha as flores…"
+                  />
+                  <p className="mt-1 text-right text-xs text-muted-foreground">Até 200 caracteres</p>
+                </div>
+              </div>
             </section>
 
-            {isGift && (
-              /* Presente: quem recebe é quem tem o endereço, não quem compra
-                 — é pra lá que a entrega precisa ir. Antes esses dois campos
-                 ficavam no bloco "Seus dados" mesmo com o toggle ligado, e o
-                 buquê acabava indo pro endereço de quem comprou em vez de
-                 quem ia receber. Telefone continua só com quem compra: em
-                 presente de surpresa a loja precisa falar com quem organizou,
-                 não ligar pra pessoa que vai ser presenteada. */
-              <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-                <h2 className="font-display text-xl">Para quem é o presente</h2>
-                <div className="mt-4 grid gap-4">
-                  <div>
-                    <Label>Nome completo *</Label>
-                    <Input required name="recipient_name" placeholder="Quem vai receber" />
-                  </div>
-                  {deliveryType === "delivery" && (
-                    <>
-                      <div>
-                        <Label>Endereço completo *</Label>
-                        <Input
-                          required
-                          name="endereco"
-                          placeholder="Rua, número, bairro, complemento, CEP"
-                        />
-                      </div>
-                      <div>
-                        <Label>Ponto de referência</Label>
-                        <Input
-                          name="reference_point"
-                          placeholder="Ex.: perto do mercado tal, casa amarela…"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {/* Seus dados — quem a loja contata pra combinar qualquer coisa
-                do pedido. Sem presente, é a mesma pessoa que recebe, então o
-                endereço fica aqui; com presente, o endereço sobe pro bloco
-                acima e aqui fica só nome e telefone de contato. */}
+            {/* Seus dados — só quem a loja contata pra combinar algo do
+                pedido. Nunca leva endereço: entrega é sempre da seção acima. */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
               <h2 className="font-display text-xl">Seus dados</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -363,44 +346,8 @@ function CheckoutPage() {
                   <Label>Seu telefone para contato *</Label>
                   <Input required name="contact_phone" placeholder="(49) 9 9999-9999" />
                 </div>
-                {!isGift && deliveryType === "delivery" && (
-                  <>
-                    <div className="md:col-span-2">
-                      <Label>Endereço completo *</Label>
-                      <Input
-                        required
-                        name="endereco"
-                        placeholder="Rua, número, bairro, complemento, CEP"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label>Ponto de referência</Label>
-                      <Input
-                        name="reference_point"
-                        placeholder="Ex.: perto do mercado tal, casa amarela…"
-                      />
-                    </div>
-                  </>
-                )}
               </div>
             </section>
-
-            {/* Cartão — mensagem em si é sempre opcional, mas o campo só
-                aparece em pedido marcado como presente: escrever cartão pra
-                pedido que a pessoa vai buscar pra ela mesma não faz sentido. */}
-            {isGift && (
-              <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-                <h2 className="font-display text-xl">Mensagem no cartão (opcional)</h2>
-                <Textarea
-                  name="card_message"
-                  className="mt-4"
-                  rows={3}
-                  maxLength={200}
-                  placeholder="O que vai escrito no cartão que acompanha as flores…"
-                />
-                <p className="mt-1 text-right text-xs text-muted-foreground">Até 200 caracteres</p>
-              </section>
-            )}
 
             {/* Pagamento */}
             <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
