@@ -419,28 +419,6 @@ async function addDeliveryConfirmationBlock(
 const CARD_GOLD_DARK: [number, number, number] = [120, 90, 40];
 const CARD_GOLD: [number, number, number] = [200, 170, 120];
 const CARD_CREAM: [number, number, number] = [253, 250, 244];
-const CARD_PETAL: [number, number, number] = [232, 172, 182];
-const CARD_PETAL_CENTER: [number, number, number] = [224, 184, 96];
-
-/**
- * Desenha um pequeno emblema de flor com formas geométricas simples (o jsPDF
- * não tem suporte a ilustração vetorial complexa) — 5 pétalas ao redor de um
- * miolo, só para dar um toque decorativo sem depender de mais um asset.
- */
-function drawFlowerMotif(doc: jsPDF, cx: number, cy: number, petalR: number): void {
-  const orbit = petalR * 1.3;
-  doc.setFillColor(...CARD_PETAL);
-  doc.setDrawColor(...CARD_GOLD);
-  doc.setLineWidth(0.15);
-  for (let i = 0; i < 5; i++) {
-    const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-    const px = cx + orbit * Math.cos(angle);
-    const py = cy + orbit * Math.sin(angle);
-    doc.circle(px, py, petalR, "FD");
-  }
-  doc.setFillColor(...CARD_PETAL_CENTER);
-  doc.circle(cx, cy, petalR * 0.7, "F");
-}
 
 /**
  * Gera o cartão de mensagem: PDF 2, o que acompanha o presente e pode ser
@@ -468,14 +446,11 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   doc.setLineWidth(0.2);
   doc.roundedRect(frameMargin + 3, frameMargin + 3, frameW - 6, frameH - 6, 3, 3, "S");
 
-  const MOTIF_R = 2.8; // mesmo raio no topo e no rodapé — moldura simétrica
-  let y = frameMargin + 16;
-
-  // A logo NÃO fica mais aqui em cima — pedido da dona: no início do cartão
-  // só o emblema de flor e o nome da loja; a logo de verdade vira marca
-  // d'água só no rodapé, junto do trevo (ver mais abaixo).
-  drawFlowerMotif(doc, centerX, y, MOTIF_R);
-  y += 20;
+  // Sem logo nem emblema decorativo aqui em cima — pedido direto da dona: a
+  // logo não fica no início do cartão. A moldura dourada já dá o acabamento;
+  // o nome da loja abre o cartão sozinho. A logo de verdade só aparece como
+  // marca d'água no rodapé, junto do trevo (ver mais abaixo).
+  let y = frameMargin + 26;
 
   doc.setFont("times", "bold");
   doc.setFontSize(18);
