@@ -311,7 +311,7 @@ function CheckoutPage() {
                       />
                     </div>
                     <div>
-                      <Label>Ponto de referência</Label>
+                      <Label>Ponto de referência (opcional)</Label>
                       <Input
                         name="reference_point"
                         placeholder="Ex.: perto do mercado tal, casa amarela…"
