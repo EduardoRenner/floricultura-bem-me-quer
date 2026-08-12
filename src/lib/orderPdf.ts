@@ -1,4 +1,4 @@
-import { jsPDF, GState } from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import { ADDRESS, formatBRL } from "@/lib/shop";
@@ -565,15 +565,13 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
     maxWidth: frameW - 20,
   });
 
-  const iconSize = 14;
+  const iconSize = 16;
   const iconY = footerQuoteY + 5;
   try {
-    // Opacidade reduzida é o que faz a logo ler como assinatura discreta no
-    // rodapé, marca d'água, em vez de um carimbo cheio repetido.
-    doc.saveGraphicsState();
-    doc.setGState(new GState({ opacity: 0.35 }));
+    // Opacidade cheia — a logo é a assinatura da marca no rodapé, não deve
+    // sumir. "Marca d'água" aqui é só posição (no final, sozinha), não
+    // transparência.
     doc.addImage(LOGO_DATA_URL, "PNG", centerX - iconSize / 2, iconY, iconSize, iconSize);
-    doc.restoreGraphicsState();
   } catch {
     // logo embutida corrompida (não deveria acontecer) — segue sem ela.
   }
