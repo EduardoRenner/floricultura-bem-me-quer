@@ -141,7 +141,9 @@ function RootComponent() {
   // componente) — este padding tem que seguir a mesma regra, senão sobra
   // ~68px de espaço morto no fim da página onde a barra deveria estar mas
   // não está.
-  const reservaBarraFixa = !pathname.startsWith("/checkout") && !pathname.startsWith("/admin");
+  const paginaSemChrome =
+    pathname.startsWith("/checkout") || pathname.startsWith("/admin") || pathname.startsWith("/links");
+  const reservaBarraFixa = !paginaSemChrome;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -153,7 +155,7 @@ function RootComponent() {
           <Outlet />
         </div>
         <CartSheet />
-        <MobileActionBar />
+        {!paginaSemChrome && <MobileActionBar />}
         <Toaster position="top-right" richColors />
       </CartProvider>
     </QueryClientProvider>
