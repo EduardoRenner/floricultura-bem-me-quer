@@ -427,24 +427,19 @@ function drawDiamond(doc: jsPDF, cx: number, cy: number, r: number): void {
   doc.triangle(cx, cy - r, cx - r, cy, cx, cy + r, "F");
 }
 
-/** Friso ornamental "— ◆ —", usado para separar os blocos do cartão. */
+/**
+ * Friso ornamental "— ◆ —", usado para separar os blocos do cartão.
+ *
+ * Linha em 0.15mm (era 0.3) e losango em 1mm (era 1.6): a dona pediu "mais
+ * delicadinho" e um traço grosso nesta escala lia como sublinhado, não como
+ * ornamento fino.
+ */
 function drawFlourishDivider(doc: jsPDF, cx: number, y: number, armLength: number): void {
   doc.setDrawColor(...CARD_GOLD);
-  doc.setLineWidth(0.3);
+  doc.setLineWidth(0.15);
   doc.line(cx - armLength - 3, y, cx - 3, y);
   doc.line(cx + 3, y, cx + armLength + 3, y);
-  drawDiamond(doc, cx, y, 1.6);
-}
-
-/** Marca decorativa de canto — dois traços em L + um ponto, estilo convite. */
-function drawCornerFlourish(doc: jsPDF, cx: number, cy: number, signX: 1 | -1, signY: 1 | -1): void {
-  const len = 8;
-  doc.setDrawColor(...CARD_GOLD);
-  doc.setLineWidth(0.35);
-  doc.line(cx, cy, cx + signX * len, cy);
-  doc.line(cx, cy, cx, cy + signY * len);
-  doc.setFillColor(...CARD_GOLD);
-  doc.circle(cx, cy, 0.8, "F");
+  drawDiamond(doc, cx, y, 1);
 }
 
 /**
@@ -459,25 +454,24 @@ function drawCornerFlourish(doc: jsPDF, cx: number, cy: number, signX: 1 | -1, s
 export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageHeight = 297;
-  const frameMargin = 18;
+  // Margem maior que a do comprovante (18mm) de propósito: mais respiro em
+  // volta da moldura é o que separa "cartão delicado" de "página cheia até a
+  // borda". A dona pediu especificamente mais leveza aqui.
+  const frameMargin = 26;
   const frameW = PAGE_WIDTH - frameMargin * 2;
   const frameH = pageHeight - frameMargin * 2;
   const centerX = PAGE_WIDTH / 2;
 
-  // ---- Moldura do cartão: fundo creme + borda dourada dupla ----
+  // ---- Moldura do cartão: fundo creme + UM único traço fino dourado ----
+  // Existiam borda dupla (0.6mm + 0.2mm) e quatro cantos com traços em L e
+  // pontinho preenchido — o efeito somado lia como convite de casamento
+  // pomposo, o oposto de "delicadinho". Um traço só, fino (0.25mm), sem
+  // ornamento de canto: a moldura vira contorno, não peça central.
   doc.setFillColor(...CARD_CREAM);
   doc.roundedRect(frameMargin, frameMargin, frameW, frameH, 4, 4, "F");
   doc.setDrawColor(...CARD_GOLD);
-  doc.setLineWidth(0.6);
+  doc.setLineWidth(0.25);
   doc.roundedRect(frameMargin, frameMargin, frameW, frameH, 4, 4, "S");
-  doc.setLineWidth(0.2);
-  doc.roundedRect(frameMargin + 3, frameMargin + 3, frameW - 6, frameH - 6, 3, 3, "S");
-
-  // Quatro marcas de canto — o toque de convite que faltava na moldura lisa.
-  drawCornerFlourish(doc, frameMargin + 9, frameMargin + 9, 1, 1);
-  drawCornerFlourish(doc, PAGE_WIDTH - frameMargin - 9, frameMargin + 9, -1, 1);
-  drawCornerFlourish(doc, frameMargin + 9, frameMargin + frameH - 9, 1, -1);
-  drawCornerFlourish(doc, PAGE_WIDTH - frameMargin - 9, frameMargin + frameH - 9, -1, -1);
 
   // ---- Topo: vazio de propósito ----
   // A faixa verde com "Floricultura Bem Me Quer" em 18pt saía daqui. O cartão
@@ -541,8 +535,8 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   if (order.customerName?.trim()) {
     const signatureY = y + 16;
     doc.setDrawColor(...CARD_GOLD);
-    doc.setLineWidth(0.2);
-    doc.line(centerX - 15, signatureY - 6, centerX + 15, signatureY - 6);
+    doc.setLineWidth(0.12);
+    doc.line(centerX - 12, signatureY - 6, centerX + 12, signatureY - 6);
     doc.setFont("times", "italic");
     doc.setFontSize(11);
     doc.setTextColor(90);
