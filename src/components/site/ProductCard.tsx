@@ -1,7 +1,7 @@
-import { Plus } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { formatBRL, productImageUrl } from "@/lib/shop";
+import { formatBRL, productImageUrl, WHATSAPP_URL, whatsappProductUrl } from "@/lib/shop";
 import { useCart } from "@/lib/cart";
 
 export type Product = {
@@ -22,7 +22,10 @@ export function ProductCard({ product }: { product: Product }) {
     // vende, e ela perde saturação quando fica sobre superfície escura.
     // flex-col + rodapé em mt-auto mantém preço e botão alinhados entre
     // cartões vizinhos, mesmo com títulos de alturas diferentes.
-    <article className="group flex h-full flex-col overflow-hidden rounded-xl bg-paper text-paper-foreground shadow-[0_1px_2px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,0,0,0.4)]">
+    <article
+      id={`produto-${product.id}`}
+      className="group flex h-full flex-col overflow-hidden rounded-xl bg-paper text-paper-foreground shadow-[0_1px_2px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(0,0,0,0.4)]"
+    >
       <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-[#ECE7D8]">
         {product.image_url ? (
           <img
@@ -66,6 +69,30 @@ export function ProductCard({ product }: { product: Product }) {
           >
             <Plus className="mr-1 h-4 w-4" /> Adicionar
           </Button>
+
+          {/* Atalho sem formulário: quem está com pressa fecha na conversa,
+              sem passar pelo checkout.
+
+              O href sai do SSR como o WhatsApp puro (funciona até sem JS) e só
+              ganha a mensagem do produto no clique — `whatsappProductUrl` lê
+              `window.location`, que não existe no servidor, e montá-la durante
+              o render causaria divergência de hidratação. */}
+          <a
+            href={WHATSAPP_URL}
+            onClick={(e) => {
+              e.currentTarget.href = whatsappProductUrl(product);
+            }}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-paper-foreground/25 text-sm font-medium text-paper-foreground transition hover:border-paper-foreground/50 hover:bg-paper-foreground/5"
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" />
+            {/* Em duas colunas de 375px o rotulo completo quebra em duas
+                linhas e estoura a altura fixa do botao. No celular fica so
+                "WhatsApp" — o icone ja diz o resto. */}
+            <span className="sm:hidden">WhatsApp</span>
+            <span className="hidden sm:inline">Pedir pelo WhatsApp</span>
+          </a>
         </div>
       </div>
     </article>

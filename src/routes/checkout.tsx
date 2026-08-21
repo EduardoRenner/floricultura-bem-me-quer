@@ -70,6 +70,7 @@ function CheckoutPage() {
     const recipientName = String(fd.get("recipient_name") ?? "").trim();
     const contactPhone = String(fd.get("contact_phone") ?? "").trim();
     const endereco = String(fd.get("endereco") ?? "").trim();
+    const numero = String(fd.get("numero") ?? "").trim();
     const referencePoint = String(fd.get("reference_point") ?? "").trim();
 
     if (name.length < 2) {
@@ -89,6 +90,14 @@ function CheckoutPage() {
     }
     if (deliveryType === "delivery" && !endereco) {
       toast.error("Preencha o endereço completo para entrega.");
+      setSubmitting(false);
+      return;
+    }
+    // O número tem campo próprio porque, escondido dentro da linha livre do
+    // endereço, ele simplesmente não era escrito — e sem número a entrega não
+    // sai. Aconteceu num pedido real. Quem não tem número escreve "s/n".
+    if (deliveryType === "delivery" && !numero) {
+      toast.error('Informe o número do endereço (use "s/n" se não houver).');
       setSubmitting(false);
       return;
     }
@@ -139,7 +148,8 @@ function CheckoutPage() {
           recipient_name: recipientName,
           recipient_phone: contactPhone,
           delivery_type: deliveryType,
-          delivery_address: deliveryType === "delivery" ? { rua: endereco } : null,
+          delivery_address:
+            deliveryType === "delivery" ? { rua: endereco, numero } : null,
           reference_point: referencePoint || null,
           delivery_date: null,
           delivery_time: null,
@@ -170,7 +180,7 @@ function CheckoutPage() {
 
     const deliveryLine =
       deliveryType === "delivery"
-        ? `*Entrega*\n  Endereço: ${endereco}${referencePoint ? "\n  Ponto de referência: " + referencePoint : ""}\n  (Taxa de entrega a combinar)`
+        ? `*Entrega*\n  Endereço: ${endereco}, ${numero}${referencePoint ? "\n  Ponto de referência: " + referencePoint : ""}\n  (Taxa de entrega a combinar)`
         : `*Retirada na loja*`;
 
     const paymentLine = `*Forma de pagamento:* ${paymentLabel}`;
@@ -302,13 +312,19 @@ function CheckoutPage() {
                 </div>
                 {deliveryType === "delivery" && (
                   <>
-                    <div>
-                      <Label>Endereço da entrega *</Label>
-                      <Input
-                        required
-                        name="endereco"
-                        placeholder="Rua, número, bairro, complemento, CEP"
-                      />
+                    <div className="grid gap-4 sm:grid-cols-[1fr_130px]">
+                      <div>
+                        <Label>Endereço da entrega *</Label>
+                        <Input
+                          required
+                          name="endereco"
+                          placeholder="Rua, bairro, complemento"
+                        />
+                      </div>
+                      <div>
+                        <Label>Número *</Label>
+                        <Input required name="numero" placeholder="123 ou s/n" />
+                      </div>
                     </div>
                     <div>
                       <Label>Ponto de referência (opcional)</Label>

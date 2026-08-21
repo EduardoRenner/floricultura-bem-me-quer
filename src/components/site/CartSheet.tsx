@@ -1,4 +1,4 @@
-import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { MessageCircle, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   Sheet,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
-import { formatBRL, productImageUrl } from "@/lib/shop";
+import { formatBRL, productImageUrl, WHATSAPP_URL, whatsappCartUrl } from "@/lib/shop";
 
 export function CartSheet() {
   const { items, open, setOpen, setQty, remove, subtotal } = useCart();
@@ -91,9 +91,27 @@ export function CartSheet() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-semibold">{formatBRL(subtotal)}</span>
                 </div>
+                {/* Dois caminhos, de propósito: quem quer conversar fecha no
+                    WhatsApp sem formulário nenhum; quem prefere resolver
+                    sozinho (fora do horário, por exemplo) segue no checkout.
+                    O atalho vem primeiro porque é o que a maioria usa. */}
+                <a
+                  href={WHATSAPP_URL}
+                  onClick={(e) => {
+                    // Nao fechamos a gaveta aqui de proposito: desmontar o
+                    // link no mesmo tick pode cancelar a navegacao que o
+                    // navegador ainda vai disparar.
+                    e.currentTarget.href = whatsappCartUrl(items);
+                  }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-base font-medium text-primary-foreground transition hover:bg-primary/90"
+                >
+                  <MessageCircle className="h-5 w-5" /> Pedir pelo WhatsApp
+                </a>
                 <Link to="/checkout" onClick={() => setOpen(false)}>
-                  <Button className="w-full" size="lg">
-                    Finalizar pedido
+                  <Button variant="outline" className="w-full" size="lg">
+                    Preencher e finalizar pelo site
                   </Button>
                 </Link>
                 <Button variant="ghost" className="w-full" onClick={() => setOpen(false)}>

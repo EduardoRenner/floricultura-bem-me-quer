@@ -55,6 +55,57 @@ export function whatsappOrderUrl(orderNumber: string) {
   return `${WHATSAPP_URL}?text=${msg}`;
 }
 
+/**
+ * Atalho de compra sem formulário: leva a conversa direto pro WhatsApp já
+ * dizendo qual arranjo a pessoa quer.
+ *
+ * Existe porque grande parte de quem compra flor está resolvendo um recado
+ * às pressas e abandona qualquer formulário. O checkout continua ali pra
+ * quem prefere resolver sozinho; este é o caminho de quem quer conversar.
+ *
+ * O link do produto é montado a partir da origem atual (`window.location`)
+ * em vez de um domínio fixo, para continuar certo em qualquer deploy.
+ */
+export function whatsappProductUrl(product: {
+  id: string;
+  name: string;
+  price: number | string;
+}): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const link = origin ? `${origin}/#produto-${product.id}` : "";
+  const msg = [
+    "Olá! Vim pelo site e queria este arranjo:",
+    "",
+    `*${product.name}* — ${formatBRL(Number(product.price))}`,
+    // As linhas em branco separam paragrafos na bolha do WhatsApp, entao
+    // nao da para filtrar strings vazias em bloco; so o link e condicional.
+    ...(link ? [link] : []),
+    "",
+    "Pode me ajudar?",
+  ].join("\n");
+  return `${WHATSAPP_URL}?text=${encodeURIComponent(msg)}`;
+}
+
+/** Mesma ideia do atalho por produto, mas com o carrinho inteiro. */
+export function whatsappCartUrl(
+  items: Array<{ name: string; price: number; quantity: number }>,
+): string {
+  const linhas = items.map(
+    (i) => `  - ${i.quantity}x ${i.name} — ${formatBRL(i.price * i.quantity)}`,
+  );
+  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const msg = [
+    "Olá! Vim pelo site e queria estes itens:",
+    "",
+    ...linhas,
+    "",
+    `Total dos produtos: ${formatBRL(total)}`,
+    "",
+    "Pode me ajudar a fechar o pedido?",
+  ].join("\n");
+  return `${WHATSAPP_URL}?text=${encodeURIComponent(msg)}`;
+}
+
 export const HOURS = [
   { label: "Segunda-feira", value: "08:00–11:30 / 13:00–18:30", day: 1 },
   { label: "Terça-feira", value: "08:00–11:30 / 13:00–18:30", day: 2 },

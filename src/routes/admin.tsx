@@ -57,29 +57,15 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/shop";
+import { ManualOrderDialog } from "@/components/admin/ManualOrderDialog";
+import { STORAGE_KEY, withSession, type AdminProduct } from "@/lib/adminClient";
 import { OCCASIONS } from "@/lib/occasions";
 import { DIAS_LONGOS, HORARIOS_PADRAO, type DiaHorario } from "@/lib/delivery";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
-// Guarda o TOKEN de sessão (assinado, expira em 24h) — nunca mais a senha
-// crua. Ver src/lib/adminSession.server.ts.
-const STORAGE_KEY = "bmq-admin-session";
-
-// Toda query/mutation do painel passa por aqui: se o servidor disser que a
-// sessão expirou (token vencido ou nunca existiu), desloga e recarrega em
-// vez de deixar a tela presa num erro genérico que não explica o que fazer.
-async function withSession<T>(promise: Promise<T>): Promise<T> {
-  try {
-    return await promise;
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Sessão expirada")) {
-      sessionStorage.removeItem(STORAGE_KEY);
-      window.location.reload();
-    }
-    throw err;
-  }
-}
+// STORAGE_KEY e withSession vivem em @/lib/adminClient — o painel deixou de
+// ser um arquivo so e outros componentes precisam deles.
 const STATUSES = ["pendente", "em_preparo", "saiu_entrega", "entregue", "cancelado"];
 const STATUS_LABEL: Record<string, string> = {
   pendente: "Pendente",
@@ -288,6 +274,7 @@ function OrdersTab({ token }: { token: string }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
   const [generatingCardId, setGeneratingCardId] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   function toOrderPdfData(o: Order) {
     return {
@@ -380,6 +367,10 @@ function OrdersTab({ token }: { token: string }) {
           <h1 className="font-display text-3xl">Pedidos</h1>
           <p className="text-sm text-muted-foreground">Gerencie os pedidos recebidos</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => setManualOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Lançar pedido do WhatsApp
+          </Button>
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-48">
             <SelectValue />
@@ -393,7 +384,10 @@ function OrdersTab({ token }: { token: string }) {
             ))}
           </SelectContent>
         </Select>
+        </div>
       </div>
+
+      <ManualOrderDialog token={token} open={manualOpen} onOpenChange={setManualOpen} />
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
         <table className="w-full text-sm">
@@ -578,17 +572,6 @@ function OrdersTab({ token }: { token: string }) {
     </div>
   );
 }
-
-type AdminProduct = {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  category: string;
-  image_url: string | null;
-  active: boolean;
-  occasions: string[];
-};
 
 function ProductsTab({ token }: { token: string }) {
   const qc = useQueryClient();

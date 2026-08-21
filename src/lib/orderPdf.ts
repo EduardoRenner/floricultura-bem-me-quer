@@ -413,14 +413,12 @@ async function addDeliveryConfirmationBlock(
   }
 }
 
-// Paleta do cartão. Dourado/creme já existia no comprovante; o verde é novo
-// aqui — é o mesmo verde de fundo da logo real (o selo redondo), puxado pro
-// cartão como faixa de destaque, pra ligar visualmente os dois sem precisar
-// repetir a imagem da logo em cima.
+// Paleta do cartão: dourado sobre creme, a mesma do comprovante. O verde da
+// marca saiu junto com a faixa do topo — no cartão que vai dentro do presente
+// a identidade entra só pela assinatura discreta do rodapé.
 const CARD_GOLD_DARK: [number, number, number] = [120, 90, 40];
 const CARD_GOLD: [number, number, number] = [200, 170, 120];
 const CARD_CREAM: [number, number, number] = [253, 250, 244];
-const CARD_GREEN: [number, number, number] = [34, 46, 27];
 
 /** Losango dourado preenchido — o "◆" entre as duas linhas do friso ornamental. */
 function drawDiamond(doc: jsPDF, cx: number, cy: number, r: number): void {
@@ -481,24 +479,16 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   drawCornerFlourish(doc, frameMargin + 9, frameMargin + frameH - 9, 1, -1);
   drawCornerFlourish(doc, PAGE_WIDTH - frameMargin - 9, frameMargin + frameH - 9, -1, -1);
 
-  // ---- Faixa com o nome da loja: verde + dourado, as cores da logo real —
-  // sem repetir a imagem em cima (a dona pediu pra logo não ficar no início),
-  // mas a paleta já entrega a mesma identidade. ----
-  const bannerY = frameMargin + 11;
-  const bannerH = 20;
-  doc.setFillColor(...CARD_GREEN);
-  doc.roundedRect(frameMargin + 10, bannerY, frameW - 20, bannerH, 2.5, 2.5, "F");
-  doc.setDrawColor(...CARD_GOLD);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(frameMargin + 10, bannerY, frameW - 20, bannerH, 2.5, 2.5, "S");
-  doc.setFont("times", "bold");
-  doc.setFontSize(18);
-  doc.setTextColor(...CARD_GOLD);
-  doc.text("Floricultura Bem Me Quer", centerX, bannerY + bannerH / 2 + 3, { align: "center" });
-
-  let y = bannerY + bannerH + 12;
-  drawFlourishDivider(doc, centerX, y, 20);
-  y += 14;
+  // ---- Topo: vazio de propósito ----
+  // A faixa verde com "Floricultura Bem Me Quer" em 18pt saía daqui. O cartão
+  // é da pessoa que está enviando, não da loja: quem recebe abre o presente
+  // para ler o recado, e uma marca grande no topo transforma a lembrança em
+  // propaganda. A assinatura da loja continua existindo, discreta, no rodapé.
+  //
+  // O friso que separava a faixa do recado também saiu: sozinho lá em cima
+  // ele virava um ornamento órfão, com um vão enorme entre ele e o texto.
+  // Agora ele viaja junto do bloco pessoal, logo acima do "PARA".
+  let y = frameMargin + 20;
 
   // Cabeçalho (faixa + friso) fica fixo perto do topo; o bloco pessoal
   // (destinatário + mensagem + assinatura) é centralizado no espaço que sobra
@@ -509,16 +499,25 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
   const lineHeight = 8.5;
   const mensagemH = linhasMensagem.length * lineHeight;
 
+  // O friso de abertura agora conta como parte do bloco pessoal, para ser
+  // centralizado junto com ele em vez de ficar preso no topo da moldura.
+  const dividerBlockH = 16;
   const nameBlockH = order.recipientName?.trim() ? 7 + 12 : 0;
   const signatureBlockH = order.customerName?.trim() ? 16 + 6 : 0;
-  const contentH = nameBlockH + mensagemH + signatureBlockH;
+  const contentH = dividerBlockH + nameBlockH + mensagemH + signatureBlockH;
 
   const contentTop = y;
-  // Reserva espaço no rodapé pro friso + frase da marca + logo em marca
-  // d'água (ver mais abaixo).
-  const bottomLimit = frameMargin + frameH - 42;
+  // Reserva espaço para o bloco de rodapé (friso + logo + nome + frase).
+  // Ele passou a começar mais acima do que na versão com faixa no topo, então
+  // este limite acompanhou — senão a assinatura da mensagem encostaria no friso.
+  const bottomLimit = frameMargin + frameH - 48;
   const freeSpace = bottomLimit - contentTop;
-  if (freeSpace > contentH) y += (freeSpace - contentH) / 2;
+  // Puxa um pouco acima do centro geométrico: com o rodapé de marca ocupando
+  // a base, o centro óptico da moldura fica mais alto que o matemático.
+  if (freeSpace > contentH) y += ((freeSpace - contentH) / 2) * 0.9;
+
+  drawFlourishDivider(doc, centerX, y, 20);
+  y += dividerBlockH;
 
   if (order.recipientName?.trim()) {
     doc.setFont("helvetica", "normal");
@@ -550,31 +549,50 @@ export async function generateCardPdf(order: OrderPdfData): Promise<jsPDF> {
     doc.text(`Com carinho, ${order.customerName}`, centerX, signatureY, { align: "center" });
   }
 
-  // ---- Rodapé: friso + frase da marca + logo, sozinha, como marca d'água ----
-  // Só a logo da Bem Me Quer — nada mais ao lado dela. O raminho de trevos
-  // que ficava aqui é uma foto de estoque, sem relação com a marca; competia
-  // com a logo e lia como um segundo emblema.
-  drawFlourishDivider(doc, centerX, frameMargin + frameH - 34, 16);
+  // ---- Rodapé: a assinatura discreta da loja ----
+  // Toda a presença de marca do cartão mora aqui embaixo, em escala pequena:
+  // friso, logo reduzida, nome em maiúsculas espaçadas e a frase da casa. A
+  // ordem importa — o olho de quem recebe termina no recado, e só depois
+  // encontra de onde a flor veio.
+  drawFlourishDivider(doc, centerX, frameMargin + frameH - 40, 14);
 
-  const footerQuoteY = frameMargin + frameH - 22;
-  doc.setFont("times", "italic");
-  doc.setFontSize(9);
-  doc.setTextColor(...CARD_GOLD_DARK);
-  doc.text('"Sempre encontre motivos para tudo o que for estar vivendo..."', centerX, footerQuoteY, {
-    align: "center",
-    maxWidth: frameW - 20,
-  });
-
-  const iconSize = 16;
-  const iconY = footerQuoteY + 5;
+  const iconSize = 11;
+  const iconY = frameMargin + frameH - 34;
   try {
-    // Opacidade cheia — a logo é a assinatura da marca no rodapé, não deve
-    // sumir. "Marca d'água" aqui é só posição (no final, sozinha), não
-    // transparência.
     doc.addImage(LOGO_DATA_URL, "PNG", centerX - iconSize / 2, iconY, iconSize, iconSize);
   } catch {
     // logo embutida corrompida (não deveria acontecer) — segue sem ela.
   }
+
+  // Nome em 7.5pt e com espaçamento entre letras: lê como assinatura gravada,
+  // não como cabeçalho. `charSpace` é o que impede que o corpo pequeno vire
+  // um borrão.
+  //
+  // O deslocamento não é cosmético: o `align: "center"` do jsPDF calcula a
+  // largura do texto SEM contar o `charSpace`, então o espaçamento empurra a
+  // linha inteira para a direita (medido: ~10mm fora do eixo). Compensamos
+  // metade do espaçamento total à esquerda para o nome cair mesmo no centro,
+  // alinhado com a logo logo acima.
+  const brand = "FLORICULTURA BEM ME QUER";
+  const brandCharSpace = 0.9;
+  const brandShift = (brandCharSpace * (brand.length - 1)) / 2;
+  doc.setFont("times", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...CARD_GOLD_DARK);
+  doc.text(brand, centerX - brandShift, iconY + iconSize + 5, {
+    align: "center",
+    charSpace: brandCharSpace,
+  });
+
+  doc.setFont("times", "italic");
+  doc.setFontSize(7.5);
+  doc.setTextColor(150);
+  doc.text(
+    '"Sempre encontre motivos para tudo o que for estar vivendo..."',
+    centerX,
+    iconY + iconSize + 11,
+    { align: "center", maxWidth: frameW - 20 },
+  );
 
   doc.setTextColor(0);
   return doc;

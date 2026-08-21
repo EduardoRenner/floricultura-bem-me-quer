@@ -33,23 +33,18 @@ type CreateOrderInput = {
 // textos longos, e isso evita que a mensagem estoure o bloco reservado no PDF.
 const CARD_MESSAGE_MAX_LENGTH = 200;
 
-export const createOrder = createServerFn({ method: "POST" })
-  .inputValidator((data: CreateOrderInput) => data)
-  .handler(async ({ data }) => {
+/**
+ * Grava o pedido: valida, resolve preços pelo catálogo, insere e gera os PDFs.
+ *
+ * Vive fora do server function porque hoje existem **duas portas** para criar
+ * pedido — o checkout público e o lançamento manual do painel — e as duas
+ * precisam exatamente das mesmas regras de validação e da mesma geração de
+ * cartão. A única diferença fica de fora daqui, em cada chamador: o checkout
+ * passa pelo rate limit por IP; o painel passa por sessão de admin.
+ */
+async function persistOrder(data: CreateOrderInput) {
+  {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getClientIp } = await import("@/lib/request.server");
-
-    // Protege o checkout público contra spam/flood de pedidos falsos — mesmo
-    // padrão do rate limit de login do admin, aplicado por IP.
-    const ip = await getClientIp();
-    const { data: allowed, error: rateLimitError } = await supabaseAdmin.rpc(
-      "check_order_rate_limit",
-      { _ip: ip },
-    );
-    if (rateLimitError) throw new Error("Não foi possível processar o pedido");
-    if (!allowed) {
-      throw new Error("Muitos pedidos em pouco tempo. Aguarde alguns minutos e tente novamente.");
-    }
 
     if (!Array.isArray(data.items) || data.items.length === 0) {
       throw new Error("Pedido sem itens");
@@ -65,6 +60,18 @@ export const createOrder = createServerFn({ method: "POST" })
     }
     if (data.delivery_type === "delivery" && !data.recipient_phone?.trim()) {
       throw new Error("Telefone de quem vai receber é obrigatório para entrega");
+    }
+    // O endereço nunca era conferido aqui: o pedido entrava com `delivery_address`
+    // vazio ou sem número e só se descobria na hora de sair pra entrega. Foi o
+    // que aconteceu com um pedido real — rua sem número, entrega impossível de
+    // fazer sem ligar pro cliente. Quem não sabe o número escreve "s/n".
+    if (data.delivery_type === "delivery") {
+      if (!data.delivery_address?.rua?.trim()) {
+        throw new Error("Endereço da entrega é obrigatório");
+      }
+      if (!data.delivery_address?.numero?.trim()) {
+        throw new Error("Número do endereço é obrigatório (use s/n se não houver)");
+      }
     }
 
     // Consolida por id: se o mesmo produto vier repetido, soma as quantidades
@@ -165,6 +172,55 @@ export const createOrder = createServerFn({ method: "POST" })
     // Devolve os itens já precificados pelo servidor para o checkout montar a
     // mensagem do WhatsApp com os valores que realmente foram gravados.
     return { orderNumber, items, total, pdfUrl, cardPdfUrl };
+  }
+}
+
+export const createOrder = createServerFn({ method: "POST" })
+  .inputValidator((data: CreateOrderInput) => data)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getClientIp } = await import("@/lib/request.server");
+
+    // Protege o checkout público contra spam/flood de pedidos falsos — mesmo
+    // padrão do rate limit de login do admin, aplicado por IP.
+    const ip = await getClientIp();
+    const { data: allowed, error: rateLimitError } = await supabaseAdmin.rpc(
+      "check_order_rate_limit",
+      { _ip: ip },
+    );
+    if (rateLimitError) throw new Error("Não foi possível processar o pedido");
+    if (!allowed) {
+      throw new Error("Muitos pedidos em pouco tempo. Aguarde alguns minutos e tente novamente.");
+    }
+
+    return persistOrder(data);
+  });
+
+/**
+ * Lançamento manual de pedido pelo painel — a venda que fechou no WhatsApp.
+ *
+ * Sem esta porta, todo pedido combinado por conversa fica fora do sistema: sem
+ * número, sem registro no painel e, principalmente, **sem o PDF do cartão** que
+ * acompanha o arranjo. Como o catálogo empurra de propósito quem tem pressa
+ * para o WhatsApp, esta é a metade que fecha o ciclo.
+ *
+ * Deliberadamente NÃO passa pelo `check_order_rate_limit`: aquele limite é de
+ * 8 pedidos por IP a cada 10 minutos, pensado contra flood anônimo. A loja
+ * lançando as vendas do dia de um único IP estouraria isso num Dia das Mães.
+ * Aqui a barreira é a sessão de admin, que é mais forte que o IP.
+ */
+export const adminCreateOrder = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; order: CreateOrderInput }) => data)
+  .handler(async ({ data }) => {
+    // Valida a sessão direto pelo `adminSession.server` em vez de reusar o
+    // `requireSession` do admin.functions: aquele não é exportado, e exportá-lo
+    // colocaria uma função de servidor no módulo que o painel importa no
+    // cliente. Aqui o import é dinâmico e vive só dentro do handler.
+    const { verifySessionToken } = await import("@/lib/adminSession.server");
+    if (!verifySessionToken(data.token)) {
+      throw new Error("Sessão expirada, faça login novamente");
+    }
+    return persistOrder(data.order);
   });
 
 const RECEIVED_TYPE_LABELS: Record<string, string> = {
